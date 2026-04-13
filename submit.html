@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <!-- ENV must load before any module -->
+  <script src="env-config.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description"
+    content="CrisisGrid — Submit a field report. Voice notes and AI-powered crisis data extraction." />
+  <title>CrisisGrid — Submit Field Report</title>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+    rel="stylesheet" />
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="style.css" />
+
+  <style>
+    /* ── Submit page layout ─────────────────────────────────────── */
+    body {
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      background:
+        radial-gradient(ellipse at 20% 0%, rgba(59, 130, 246, 0.08) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 100%, rgba(139, 92, 246, 0.06) 0%, transparent 50%),
+        var(--bg-primary);
+    }
+
+    .submit-wrapper {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 32px 20px 48px;
+    }
+
+    .submit-card {
+      width: 100%;
+      max-width: 560px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 36px 32px;
+      box-shadow: var(--shadow-card), var(--shadow-glow);
+      animation: pageFade 0.5s ease;
+    }
+
+    .submit-header {
+      text-align: center;
+      margin-bottom: 28px;
+    }
+
+    .submit-header h1 {
+      font-size: 22px;
+      font-weight: 800;
+      margin-bottom: 6px;
+      background: linear-gradient(90deg, #60a5fa, #c084fc);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .submit-header p {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    /* ── Form sections ──────────────────────────────────────────── */
+    .form-section {
+      margin-bottom: 24px;
+    }
+
+    .form-section-title {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .form-section-title::after {
+      content: "";
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* ── Text area wrapper ──────────────────────────────────────── */
+    .textarea-wrapper {
+      position: relative;
+    }
+
+    #report-text {
+      min-height: 150px;
+      font-size: 15px;
+      line-height: 1.65;
+      padding-bottom: 32px;
+    }
+
+    .char-counter {
+      position: absolute;
+      bottom: 10px;
+      right: 14px;
+      font-size: 11px;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--text-muted);
+    }
+
+    /* ── Media buttons grid ──────────────────────────────────────── */
+    .media-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .media-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 12px 14px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      color: var(--text-label);
+      font-family: 'Inter', sans-serif;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .media-btn:hover:not(:disabled) {
+      color: var(--text-primary);
+      background: rgba(255, 255, 255, 0.07);
+      border-color: var(--border-bright);
+    }
+
+    .media-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .media-btn.recording {
+      color: #f87171;
+      border-color: rgba(239, 68, 68, 0.4);
+      background: rgba(239, 68, 68, 0.08);
+      animation: pulse-recording 1.5s ease-in-out infinite;
+    }
+
+    .media-btn .media-icon {
+      font-size: 18px;
+      line-height: 1;
+    }
+
+    @keyframes pulse-recording {
+
+      0%,
+      100% {
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.3);
+      }
+
+      50% {
+        box-shadow: 0 0 0 6px rgba(239, 68, 68, 0);
+      }
+    }
+
+    .media-status-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 8px;
+      font-size: 12px;
+    }
+
+    #media-status {
+      color: var(--text-muted);
+    }
+
+    #media-timer {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: #f87171;
+      font-weight: 600;
+      display: none;
+    }
+
+    /* ── Media preview gallery ────────────────────────────────────── */
+    #media-preview-area {
+      margin-top: 14px;
+      display: none;
+    }
+
+    .media-preview-title {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+    }
+
+    .media-preview-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .media-thumb {
+      position: relative;
+      width: 100px;
+      height: 80px;
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+      border: 1px solid var(--border-bright);
+      background: var(--bg-primary);
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .media-thumb:hover {
+      border-color: var(--accent);
+      transform: scale(1.04);
+    }
+
+    .media-thumb img,
+    .media-thumb video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .media-thumb-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    .media-thumb:hover .media-thumb-overlay {
+      opacity: 1;
+    }
+
+    .media-thumb-badge {
+      position: absolute;
+      top: 4px;
+      left: 4px;
+      font-size: 14px;
+      background: rgba(0, 0, 0, 0.6);
+      border-radius: 4px;
+      padding: 1px 5px;
+      line-height: 1;
+    }
+
+    .media-thumb-remove {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: rgba(239, 68, 68, 0.85);
+      border: none;
+      color: #fff;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    .media-thumb:hover .media-thumb-remove {
+      opacity: 1;
+    }
+
+    .media-thumb-audio {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(139, 92, 246, 0.1));
+    }
+
+    .media-thumb-audio span:first-child {
+      font-size: 24px;
+    }
+
+    .media-thumb-audio span:last-child {
+      font-size: 9px;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    /* ── Camera / Video Modal ────────────────────────────────────── */
+    #camera-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 2000;
+      background: rgba(0, 0, 0, 0.88);
+      backdrop-filter: blur(10px);
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      animation: pageFade 0.25s ease;
+    }
+
+    #camera-modal.open {
+      display: flex;
+    }
+
+    .camera-container {
+      position: relative;
+      width: min(90vw, 560px);
+      max-height: 70vh;
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      border: 2px solid var(--border-bright);
+      box-shadow: 0 8px 40px rgba(0, 0, 0, 0.6);
+    }
+
+    #camera-feed {
+      width: 100%;
+      max-height: 70vh;
+      display: block;
+      background: #000;
+      transform: scaleX(-1);
+    }
+
+    .camera-rec-badge {
+      position: absolute;
+      top: 14px;
+      left: 14px;
+      display: none;
+      align-items: center;
+      gap: 6px;
+      background: rgba(239, 68, 68, 0.85);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 99px;
+      animation: pulse-recording 1.5s infinite;
+    }
+
+    .camera-rec-badge.visible {
+      display: flex;
+    }
+
+    .camera-rec-badge .rec-dot {
+      width: 8px;
+      height: 8px;
+      background: #fff;
+      border-radius: 50%;
+    }
+
+    .camera-controls {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      margin-top: 20px;
+    }
+
+    .cam-btn {
+      width: 54px;
+      height: 54px;
+      border-radius: 50%;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+      font-size: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .cam-btn:hover {
+      background: rgba(255, 255, 255, 0.2);
+      transform: scale(1.08);
+    }
+
+    .cam-btn-capture {
+      width: 64px;
+      height: 64px;
+      background: #fff;
+      border: 3px solid rgba(255, 255, 255, 0.6);
+    }
+
+    .cam-btn-capture:hover {
+      background: #e0e0e0;
+    }
+
+    .cam-btn-capture.video-mode {
+      background: var(--red);
+      border-color: rgba(239, 68, 68, 0.4);
+    }
+
+    .cam-btn-capture.video-mode:hover {
+      background: #dc2626;
+    }
+
+    .cam-btn-capture.video-recording {
+      background: var(--red);
+      border-color: #fff;
+      border-radius: 12px;
+      animation: pulse-recording 1.5s infinite;
+    }
+
+    .cam-btn-close {
+      font-size: 18px;
+    }
+
+    .camera-mode-label {
+      color: var(--text-muted);
+      font-size: 12px;
+      font-weight: 600;
+      margin-top: 10px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    #camera-canvas {
+      display: none;
+    }
+
+    /* ── NGO Name ───────────────────────────────────────────────── */
+    #ngo-name {
+      padding: 10px 14px;
+      font-size: 13px;
+    }
+
+    /* ── Preview card ───────────────────────────────────────────── */
+    #preview-card {
+      display: none;
+      background: rgba(59, 130, 246, 0.06);
+      border: 1px solid rgba(59, 130, 246, 0.2);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      margin-bottom: 24px;
+    }
+
+    .preview-enter {
+      animation: pageFade 0.4s ease;
+    }
+
+    .preview-title {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: #60a5fa;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .preview-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .preview-field {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .preview-field .key {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    .preview-field .val {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    /* ── Submit button ──────────────────────────────────────────── */
+    .submit-actions {
+      display: flex;
+      gap: 12px;
+    }
+
+    #submit-spinner {
+      display: none;
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+
+    /* ── Footer ─────────────────────────────────────────────────── */
+    .submit-footer {
+      text-align: center;
+      padding: 12px;
+      font-size: 11px;
+      color: var(--text-muted);
+      border-top: 1px solid var(--border);
+    }
+
+    .submit-footer a {
+      color: var(--accent);
+    }
+
+    /* ── Responsive ─────────────────────────────────────────────── */
+    @media (max-width: 600px) {
+      .submit-card {
+        padding: 28px 20px;
+        border-radius: var(--radius-md);
+      }
+
+      .submit-wrapper {
+        padding: 20px 12px 32px;
+      }
+
+      .preview-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .media-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .media-thumb {
+        width: 80px;
+        height: 64px;
+      }
+    }
+
+    /* ── Hidden file inputs ─────────────────────────────────────── */
+    #voice-file-input,
+    #photo-file-input {
+      display: none;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- Navbar -->
+  <nav class="navbar" role="navigation" aria-label="Main navigation">
+    <div class="navbar-brand">
+      <div class="navbar-logo" aria-hidden="true">
+        <svg width="40" height="40" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+          <rect width="100" height="100" rx="16" fill="#0a0f1e" />
+          <line x1="20" y1="0" x2="20" y2="100" stroke="#1a2040" stroke-width="1" />
+          <line x1="40" y1="0" x2="40" y2="100" stroke="#1a2040" stroke-width="1" />
+          <line x1="60" y1="0" x2="60" y2="100" stroke="#1a2040" stroke-width="1" />
+          <line x1="80" y1="0" x2="80" y2="100" stroke="#1a2040" stroke-width="1" />
+          <line x1="0" y1="25" x2="100" y2="25" stroke="#1a2040" stroke-width="1" />
+          <line x1="0" y1="50" x2="100" y2="50" stroke="#1a2040" stroke-width="1" />
+          <line x1="0" y1="75" x2="100" y2="75" stroke="#1a2040" stroke-width="1" />
+          <circle cx="20" cy="30" r="8" fill="#ef4444" />
+          <line x1="20" y1="38" x2="20" y2="52" stroke="#ef4444" stroke-width="2.5" />
+          <circle cx="60" cy="55" r="6" fill="#f97316" />
+          <line x1="60" y1="61" x2="60" y2="72" stroke="#f97316" stroke-width="2" />
+          <circle cx="80" cy="22" r="5" fill="#22c55e" />
+          <line x1="80" y1="27" x2="80" y2="36" stroke="#22c55e" stroke-width="2" />
+          <circle cx="20" cy="30" r="14" fill="none" stroke="#ef4444" stroke-width="1" opacity="0.4" />
+          <path d="M20 52 Q40 58 60 72" stroke="#ef4444" stroke-width="1" stroke-dasharray="3,3" fill="none"
+            opacity="0.5" />
+        </svg>
+      </div>
+      <div>
+        <div class="navbar-name">CrisisGrid</div>
+        <div class="navbar-slogan">EMERGENCY COMMAND CENTER</div>
+      </div>
+    </div>
+
+    <div class="navbar-actions">
+      <a href="index.html" class="nav-link" aria-label="View live crisis map">
+        🗺️ Live Map
+      </a>
+      <span class="nav-link active" aria-current="page">+ Submit Report</span>
+    </div>
+  </nav>
+
+  <!-- Main form -->
+  <main class="submit-wrapper page-fade" role="main">
+    <div class="submit-card">
+      <div class="submit-header">
+        <h1>📡 Submit Field Report</h1>
+        <p>Type or dictate your on-ground crisis observation.<br>AI will extract structured data for the response map.
+        </p>
+      </div>
+
+      <form id="report-form" autocomplete="off">
+
+        <!-- Media Attachments section -->
+        <div class="form-section">
+          <div class="form-section-title">
+            <span>📎 Media Attachments</span>
+          </div>
+          <div class="media-grid">
+            <button type="button" id="photo-btn" class="media-btn" aria-label="Take a photo">
+              <span class="media-icon">📷</span> Take Photo
+            </button>
+            <button type="button" id="video-btn" class="media-btn" aria-label="Record video">
+              <span class="media-icon">🎥</span> Record Video
+            </button>
+            <button type="button" id="mic-btn" class="media-btn" aria-label="Record voice note">
+              <span class="media-icon">🎙️</span> Record Voice
+            </button>
+            <button type="button" id="voice-upload-btn" class="media-btn" aria-label="Upload audio file">
+              <span class="media-icon">📁</span> Upload File
+            </button>
+            <input type="file" id="voice-file-input" accept="audio/*" />
+            <input type="file" id="photo-file-input" accept="image/*" />
+          </div>
+          <div class="media-status-row">
+            <span id="media-status"></span>
+            <span id="media-timer">00:00</span>
+          </div>
+
+          <!-- Media preview gallery -->
+          <div id="media-preview-area">
+            <div class="media-preview-title">Attached Evidence</div>
+            <div class="media-preview-list" id="media-preview-list"></div>
+          </div>
+        </div>
+
+        <!-- Written report -->
+        <div class="form-section">
+          <div class="form-section-title">
+            <span>📝 Crisis Report</span>
+          </div>
+          <div class="form-group">
+            <div class="textarea-wrapper">
+              <textarea id="report-text" class="form-control"
+                placeholder="Describe the crisis you're witnessing, e.g.&#10;'50 families need food and clean water in Kolhapur after severe flooding. Roads are blocked. Children are showing signs of dehydration.'"
+                maxlength="1000" aria-label="Crisis report text" required></textarea>
+              <span class="char-counter" id="char-count">0 / 1000</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- NGO / Organization -->
+        <div class="form-section">
+          <div class="form-section-title">
+            <span>🏢 Reporter Details</span>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="ngo-name">Organisation / NGO Name (optional)</label>
+            <input type="text" id="ngo-name" class="form-control"
+              placeholder="e.g. Red Cross India, UNICEF, Local Volunteer" maxlength="120"
+              aria-label="Organisation or NGO name" />
+          </div>
+        </div>
+
+        <!-- AI extraction preview -->
+        <div id="preview-card" role="region" aria-label="AI extracted data preview">
+          <div class="preview-title">✨ AI Extracted Data</div>
+          <div class="preview-grid">
+            <div class="preview-field">
+              <span class="key">Location</span>
+              <span class="val" id="preview-location">—</span>
+            </div>
+            <div class="preview-field">
+              <span class="key">Need Type</span>
+              <span class="val" id="preview-need">—</span>
+            </div>
+            <div class="preview-field">
+              <span class="key">Urgency Score</span>
+              <span class="val" id="preview-urgency">—</span>
+            </div>
+            <div class="preview-field">
+              <span class="key">Population Affected</span>
+              <span class="val" id="preview-pop">—</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Submit -->
+        <div class="submit-actions">
+          <button type="submit" id="submit-btn" class="btn btn-primary btn-lg btn-full">
+            <span id="submit-spinner"></span>
+            <span id="submit-btn-text">Submit Report</span>
+          </button>
+        </div>
+
+      </form>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="submit-footer">
+    Built with ❤️ for humanitarian response &middot;
+    <a href="index.html">View Live Map →</a>
+  </footer>
+
+  <!-- Camera / Video Modal -->
+  <div id="camera-modal">
+    <div class="camera-container">
+      <video id="camera-feed" autoplay playsinline muted></video>
+      <div class="camera-rec-badge" id="camera-rec-badge">
+        <div class="rec-dot"></div>
+        <span id="camera-rec-timer">00:00</span> REC
+      </div>
+    </div>
+    <div class="camera-controls">
+      <button class="cam-btn cam-btn-close" id="camera-close-btn" aria-label="Close camera">✕</button>
+      <button class="cam-btn cam-btn-capture" id="camera-capture-btn" aria-label="Capture"></button>
+      <button class="cam-btn" id="camera-flip-btn" aria-label="Flip camera">🔄</button>
+    </div>
+    <div class="camera-mode-label" id="camera-mode-label">Photo Mode</div>
+  </div>
+
+  <canvas id="camera-canvas"></canvas>
+
+  <!-- Toast container -->
+  <div id="toast-container" role="status" aria-live="polite"></div>
+
+  <!-- Firebase SDK (compat mode — works without build step) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+  <!-- App logic -->
+  <script src="submit.js"></script>
+</body>
+
+</html>
