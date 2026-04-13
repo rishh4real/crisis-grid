@@ -16,24 +16,15 @@
 
   L.control.zoom({ position: "bottomright" }).addTo(map);
 
-  const getTileUrl = function (theme) {
-    return theme === 'dark'
-      ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-      : "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png";
-  };
-
-  const currentTheme = document.documentElement.getAttribute("data-theme") || "light";
-
-  const mapLayer = L.tileLayer(getTileUrl(currentTheme), {
-    attribution:
-      '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',
-    subdomains: "abcd",
-    maxZoom: 19,
-  }).addTo(map);
-
-  window.addEventListener('themeChanged', function (e) {
-    mapLayer.setUrl(getTileUrl(e.detail));
-  });
+  L.tileLayer(
+    "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+    {
+      attribution:
+        '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',
+      subdomains: "abcd",
+      maxZoom: 19,
+    }
+  ).addTo(map);
 
   // ── State ───────────────────────────────────────────────────────────────────
   const markers = {};

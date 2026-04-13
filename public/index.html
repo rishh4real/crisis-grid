@@ -3,7 +3,6 @@
 <head>
   <!-- ENV must load before any module -->
   <script src="env-config.js"></script>
-  <script src="theme.js"></script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="description" content="CrisisGrid — Real-time humanitarian crisis map. Ground truth, delivered to those who act." />
@@ -242,25 +241,20 @@
   </style>
 </head>
 <body>
-  <!-- Emergency Header -->
-  <div class="emergency-banner">
-    EMERGENCY RESPONSE SYSTEM — For authorized field workers and NGO coordinators only
-  </div>
 
   <!-- Navbar -->
   <nav class="navbar" role="navigation" aria-label="Main navigation">
     <div class="navbar-brand">
-      <a href="landing.html" style="display:flex; align-items:center; gap:14px; text-decoration:none;">
-        <div class="navbar-logo" aria-hidden="true">
+      <div class="navbar-logo" aria-hidden="true">
         <svg width="40" height="40" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-          <rect width="100" height="100" rx="16" fill="#1b2a4a"/>
-          <line x1="20" y1="0" x2="20" y2="100" stroke="#2c3e50" stroke-width="1"/>
-          <line x1="40" y1="0" x2="40" y2="100" stroke="#2c3e50" stroke-width="1"/>
-          <line x1="60" y1="0" x2="60" y2="100" stroke="#2c3e50" stroke-width="1"/>
-          <line x1="80" y1="0" x2="80" y2="100" stroke="#2c3e50" stroke-width="1"/>
-          <line x1="0" y1="25" x2="100" y2="25" stroke="#2c3e50" stroke-width="1"/>
-          <line x1="0" y1="50" x2="100" y2="50" stroke="#2c3e50" stroke-width="1"/>
-          <line x1="0" y1="75" x2="100" y2="75" stroke="#2c3e50" stroke-width="1"/>
+          <rect width="100" height="100" rx="16" fill="#0a0f1e"/>
+          <line x1="20" y1="0" x2="20" y2="100" stroke="#1a2040" stroke-width="1"/>
+          <line x1="40" y1="0" x2="40" y2="100" stroke="#1a2040" stroke-width="1"/>
+          <line x1="60" y1="0" x2="60" y2="100" stroke="#1a2040" stroke-width="1"/>
+          <line x1="80" y1="0" x2="80" y2="100" stroke="#1a2040" stroke-width="1"/>
+          <line x1="0" y1="25" x2="100" y2="25" stroke="#1a2040" stroke-width="1"/>
+          <line x1="0" y1="50" x2="100" y2="50" stroke="#1a2040" stroke-width="1"/>
+          <line x1="0" y1="75" x2="100" y2="75" stroke="#1a2040" stroke-width="1"/>
           <circle cx="20" cy="30" r="8" fill="#ef4444"/>
           <line x1="20" y1="38" x2="20" y2="52" stroke="#ef4444" stroke-width="2.5"/>
           <circle cx="60" cy="55" r="6" fill="#f97316"/>
@@ -275,7 +269,6 @@
         <div class="navbar-name">CrisisGrid</div>
         <div class="navbar-slogan">EMERGENCY COMMAND CENTER</div>
       </div>
-      </a>
     </div>
 
     <div class="navbar-actions">
@@ -345,11 +338,8 @@
       </div>
 
       <div class="sidebar-footer">
-        <span>Updated: <strong id="last-updated">—</strong></span>
-        <div style="display:flex; gap:12px; align-items:center;">
-          <button id="theme-toggle" class="btn" style="padding: 4px 8px; font-size: 11px; border: 1px solid var(--border); background: var(--bg-primary); color: var(--text-primary); cursor:pointer;">🌙 Dark Mode</button>
-          <a href="submit.html" style="font-size:11px;color:var(--accent)">+ Add Report</a>
-        </div>
+        <span>Last updated: <strong id="last-updated">—</strong></span>
+        <a href="submit.html" style="font-size:11px;color:var(--accent)">+ Add Report</a>
       </div>
     </aside>
   </main>
