@@ -618,15 +618,18 @@
       return;
     }
 
+    var reporterName = document.getElementById("reporter-name") ? document.getElementById("reporter-name").value.trim() : "";
     var city = document.getElementById("reporter-city") ? document.getElementById("reporter-city").value.trim() : "";
+    var state = document.getElementById("reporter-state") ? document.getElementById("reporter-state").value.trim() : "";
     var country = document.getElementById("reporter-country") ? document.getElementById("reporter-country").value.trim() : "";
+    
     var locationPrefix = "";
-    if (city || country) {
-      locationPrefix = "Location: " + [city, country].filter(Boolean).join(", ") + ". ";
+    if (city || state || country) {
+      locationPrefix = "Contextual Location: " + [city, state, country].filter(Boolean).join(", ") + ". ";
     }
-    var fullReportText = locationPrefix ? locationPrefix + "Report: " + reportText : reportText;
+    var fullReportText = locationPrefix ? locationPrefix + "Field Observation: " + reportText : reportText;
 
-    var ngoName = ngoNameInput.value.trim() || "Anonymous Field Worker";
+    var ngoName = ngoNameInput.value.trim() || "Independent Field Worker";
     setSubmitLoading(true, window.i18n ? window.i18n.t("btn_analyzing") : "Analysing with AI…");
     hidePreview();
  
@@ -658,6 +661,9 @@
  
         return db.collection("reports").add({
           rawText: reportText,
+          reporterName: reporterName,
+          state: state,
+          country: country,
           ngoName: ngoName,
           location: result.extracted.location,
           needType: result.extracted.needType,
@@ -671,6 +677,8 @@
         }).then(function () {
           toast((window.i18n ? window.i18n.t("toast_success") : "✅ Report saved with ") + mediaAttachments.length + " attachment(s)!", "success");
           reportTextarea.value = "";
+          document.getElementById("reporter-name") && (document.getElementById("reporter-name").value = "");
+          document.getElementById("reporter-state") && (document.getElementById("reporter-state").value = "");
           ngoNameInput.value = "";
           charCounter.textContent = "0 / 1000";
           mediaAttachments = [];

@@ -61,15 +61,82 @@
       border: 1px solid var(--border-bright);
       background: rgba(8,12,20,0.85);
       backdrop-filter: blur(10px);
-      color: var(--text-label);
+      color: #cbd5e1;
       cursor: pointer;
       transition: var(--transition);
       display: flex; align-items: center; gap: 5px;
     }
-    .filter-btn:hover { color: var(--text-primary); border-color: rgba(255,255,255,0.2); }
+    .filter-btn:hover { color: #fff; border-color: rgba(255,255,255,0.2); }
     .filter-btn.active { color: #fff; background: var(--accent); border-color: var(--accent); }
     .filter-btn .dot {
       width: 8px; height: 8px; border-radius: 50%;
+    }
+
+    /* ── Modal Styles ─────────────────────────────────────────────── */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(4px); z-index: 5000;
+      display: none; align-items: center; justify-content: center;
+      padding: 20px;
+    }
+    .modal-overlay.active { display: flex; }
+    .modal-container {
+      background: var(--bg-card); width: 100%; max-width: 600px;
+      max-height: 90vh; overflow-y: auto;
+      border-radius: var(--radius-lg); border: 1px solid var(--border);
+      box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+      position: relative; animation: modalIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    @keyframes modalIn {
+      from { opacity: 0; transform: translateY(20px) scale(0.95); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .modal-header {
+      padding: 24px 28px; border-bottom: 1px solid var(--border);
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .modal-title { font-size: 18px; font-weight: 800; color: var(--text-primary); }
+    .modal-close {
+      background: none; border: none; font-size: 24px; color: var(--text-muted);
+      cursor: pointer; line-height: 1;
+    }
+    .modal-body { padding: 28px; display: flex; flex-direction: column; gap: 20px; }
+    .modal-field { display: flex; flex-direction: column; gap: 4px; }
+    .modal-field-label { font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.5px; }
+    .modal-field-value { font-size: 15px; font-weight: 500; color: var(--text-primary); }
+    .modal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .modal-text-block { background: var(--bg-primary); padding: 16px; border-radius: var(--radius-md); border: 1px solid var(--border); font-size: 14px; line-height: 1.6; font-style: italic; }
+    .modal-audio { margin-top: 10px; width: 100%; }
+
+    /* ── Sidebar Report List ─────────────────────────────────────── */
+    .report-list-item {
+      padding: 12px; border-radius: var(--radius-md); border: 1px solid var(--border);
+      background: var(--bg-card); margin-bottom: 8px; cursor: pointer;
+      transition: var(--transition);
+    }
+    .report-list-item:hover { border-color: var(--border-bright); background: var(--bg-primary); }
+    .report-list-header { display: flex; justify-content: space-between; margin-bottom: 6px; }
+    .report-list-loc { font-size: 13px; font-weight: 700; color: var(--text-primary); }
+    .report-list-meta { font-size: 11px; color: var(--text-muted); display: flex; gap: 8px; }
+
+    /* ── Mobile Logic ────────────────────────────────────────────── */
+    #sidebar-toggle {
+      position: absolute; bottom: 24px; right: 24px;
+      width: 50px; height: 50px; border-radius: 50%;
+      background: var(--accent); color: #fff;
+      border: none; box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+      z-index: 1000; display: none; align-items: center; justify-content: center;
+      font-size: 20px; cursor: pointer;
+    }
+
+    @media (max-width: 768px) {
+      #sidebar {
+        position: fixed; top: 0; right: 0; bottom: 0;
+        width: 100%; transform: translateX(100%);
+      }
+      #sidebar.sidebar-open { transform: translateX(0); }
+      #sidebar-toggle { display: flex; }
+      .map-controls { top: 12px; left: 12px; right: 12px; }
     }
 
     .recenter-btn {

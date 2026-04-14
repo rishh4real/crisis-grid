@@ -695,19 +695,31 @@
             <span data-i18n="section_reporter_details">🏢 Reporter Details</span>
           </div>
           <div class="form-group" style="margin-bottom: 12px;">
+            <label class="form-label" for="reporter-name" data-i18n="label_reporter_name">Reporter Name</label>
+            <input type="text" id="reporter-name" class="form-control"
+              placeholder="e.g. Rahul Sharma" maxlength="120"
+              aria-label="Reporter Name" required />
+          </div>
+          <div class="form-group" style="margin-bottom: 12px;">
             <label class="form-label" for="reporter-city" data-i18n="label_city">City</label>
             <input type="text" id="reporter-city" class="form-control"
               placeholder="e.g. Kathmandu" maxlength="120"
               aria-label="City" required />
           </div>
           <div class="form-group" style="margin-bottom: 12px;">
+            <label class="form-label" for="reporter-state" data-i18n="label_state">State</label>
+            <input type="text" id="reporter-state" class="form-control"
+              placeholder="e.g. Maharashtra" maxlength="120"
+              aria-label="State" required />
+          </div>
+          <div class="form-group" style="margin-bottom: 12px;">
             <label class="form-label" for="reporter-country" data-i18n="label_country">Country</label>
             <select id="reporter-country" class="form-control" aria-label="Country" required>
-              <option value="" disabled selected data-i18n="select_country">Select a country</option>
+              <option value="" disabled data-i18n="select_country">Select a country</option>
               <option value="Afghanistan">Afghanistan</option>
               <option value="Bangladesh">Bangladesh</option>
               <option value="Haiti">Haiti</option>
-              <option value="India">India</option>
+              <option value="India" selected>India</option>
               <option value="Indonesia">Indonesia</option>
               <option value="Libya">Libya</option>
               <option value="Morocco">Morocco</option>
