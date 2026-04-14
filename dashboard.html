@@ -4,10 +4,12 @@
   <!-- ENV must load before any module -->
   <script src="env-config.js"></script>
   <script src="theme.js"></script>
+  <script src="i18n.js"></script>
+  <script src="settings.js"></script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="description" content="CrisisGrid — Real-time humanitarian crisis map. Ground truth, delivered to those who act." />
-  <title>CrisisGrid — Live Crisis Map</title>
+  <title data-i18n="dashboard_title">CrisisGrid — Live Crisis Map</title>
 
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -243,7 +245,7 @@
 </head>
 <body>
   <!-- Emergency Header -->
-  <div class="emergency-banner">
+  <div class="emergency-banner" data-i18n="emergency_banner">
     EMERGENCY RESPONSE SYSTEM — For authorized field workers and NGO coordinators only
   </div>
 
@@ -273,19 +275,39 @@
       </div>
       <div>
         <div class="navbar-name">CrisisGrid</div>
-        <div class="navbar-slogan">EMERGENCY COMMAND CENTER</div>
+        <div class="navbar-slogan" data-i18n="navbar_slogan">EMERGENCY COMMAND CENTER</div>
       </div>
       </a>
     </div>
 
     <div class="navbar-actions">
+      <div class="settings-container">
+        <button id="settings-btn" class="btn" style="padding: 6px 12px; font-size: 16px; cursor:pointer;" aria-label="Settings">⚙️</button>
+        <div id="settings-dropdown" class="settings-dropdown" style="top: 100%;">
+          <div class="settings-header" data-i18n="settings_title">Settings</div>
+          <div class="setting-item">
+            <div class="setting-label" data-i18n="settings_theme">Theme Mode</div>
+            <div class="setting-options">
+              <button class="setting-opt" data-set-theme="light" data-i18n="theme_light">Light</button>
+              <button class="setting-opt" data-set-theme="dark" data-i18n="theme_dark">Dark</button>
+            </div>
+          </div>
+          <div class="setting-item">
+            <div class="setting-label" data-i18n="settings_lang">Language</div>
+            <div class="setting-options">
+              <button class="setting-opt" data-set-lang="en" data-i18n="lang_en">English</button>
+              <button class="setting-opt" data-set-lang="hi" data-i18n="lang_hi">हिन्दी</button>
+            </div>
+          </div>
+        </div>
+      </div>
       <div class="count-pill">
-        <span id="report-count">0</span> active reports
+        <span id="report-count">0</span> <span data-i18n="active_reports">active reports</span>
       </div>
       <div class="live-badge" aria-live="polite">
-        <div class="live-dot"></div> LIVE
+        <div class="live-dot"></div> <span data-i18n="live">LIVE</span>
       </div>
-      <a href="submit.html" class="nav-link nav-link-primary" aria-label="Submit a field report">
+      <a href="submit.html" class="nav-link nav-link-primary" aria-label="Submit a field report" data-i18n="nav_submit">
         + Submit Report
       </a>
     </div>
@@ -299,15 +321,15 @@
       <!-- Map controls -->
       <div class="map-controls" role="group" aria-label="Map filters">
         <div class="filter-strip">
-          <button class="filter-btn active" data-filter="all" aria-pressed="true">All</button>
+          <button class="filter-btn active" data-filter="all" aria-pressed="true" data-i18n="all">All</button>
           <button class="filter-btn" data-filter="high" aria-pressed="false">
-            <span class="dot" style="background:var(--red)"></span> Critical
+            <span class="dot" style="background:var(--red)"></span> <span data-i18n="critical">Critical</span>
           </button>
           <button class="filter-btn" data-filter="medium" aria-pressed="false">
-            <span class="dot" style="background:var(--orange)"></span> Moderate
+            <span class="dot" style="background:var(--orange)"></span> <span data-i18n="moderate">Moderate</span>
           </button>
           <button class="filter-btn" data-filter="low" aria-pressed="false">
-            <span class="dot" style="background:var(--green)"></span> Low
+            <span class="dot" style="background:var(--green)"></span> <span data-i18n="low">Low</span>
           </button>
         </div>
         <button class="recenter-btn" id="recenter-btn" aria-label="Recenter map to India">🎯</button>
@@ -317,19 +339,19 @@
     <!-- Sidebar -->
     <aside id="sidebar" aria-label="Hotspot panel">
       <div class="sidebar-header">
-        <div class="sidebar-title">Response Overview</div>
+        <div class="sidebar-title" data-i18n="response_overview">Response Overview</div>
         <div class="stats-row" role="list" aria-label="Report statistics">
           <div class="stat-chip high" role="listitem">
             <span class="stat-chip-val" id="stats-high">0</span>
-            <div class="stat-chip-label">Critical</div>
+            <div class="stat-chip-label" data-i18n="critical">Critical</div>
           </div>
           <div class="stat-chip med" role="listitem">
             <span class="stat-chip-val" id="stats-med">0</span>
-            <div class="stat-chip-label">Moderate</div>
+            <div class="stat-chip-label" data-i18n="moderate">Moderate</div>
           </div>
           <div class="stat-chip low" role="listitem">
             <span class="stat-chip-val" id="stats-low">0</span>
-            <div class="stat-chip-label">Low Risk</div>
+            <div class="stat-chip-label" data-i18n="low_risk">Low Risk</div>
           </div>
         </div>
       </div>
@@ -340,15 +362,14 @@
         <!-- Populated by app.js -->
         <div style="text-align:center;padding:40px 0;color:var(--text-muted);">
           <div style="font-size:32px;margin-bottom:10px;animation:spin 2s linear infinite">⏳</div>
-          <div style="font-size:13px;">Connecting to live feed…</div>
+          <div style="font-size:13px;" data-i18n="connecting_feed">Connecting to live feed…</div>
         </div>
       </div>
 
       <div class="sidebar-footer">
-        <span>Updated: <strong id="last-updated">—</strong></span>
+        <span data-i18n="last_updated">Updated:</span> <strong id="last-updated">—</strong>
         <div style="display:flex; gap:12px; align-items:center;">
-          <button id="theme-toggle" class="btn theme-toggle" style="padding: 6px 12px; font-size: 13px; border: 1px solid var(--border); background: var(--bg-secondary); color: var(--text-primary); cursor:pointer;">🌙 Dark Mode</button>
-          <a href="submit.html" style="font-size:11px;color:var(--accent)">+ Add Report</a>
+          <a href="submit.html" style="font-size:11px;color:var(--accent)" data-i18n="nav_submit">+ Add Report</a>
         </div>
       </div>
     </aside>

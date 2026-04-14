@@ -35,6 +35,12 @@
     mapLayer.setUrl(getTileUrl(e.detail));
   });
 
+  window.addEventListener('languageChanged', function () {
+    // Refresh hotspots and markers to apply new language
+    if (window.renderHotspots) window.renderHotspots();
+    if (window.updateStats) window.updateStats();
+  });
+
   // ── State ───────────────────────────────────────────────────────────────────
   const markers = {};
   const allReports = [];
@@ -65,9 +71,11 @@
   }
 
   function urgencyLabel(score) {
-    if (score >= 8) return { label: "CRITICAL", cls: "badge-red" };
-    if (score >= 4) return { label: "MODERATE", cls: "badge-orange" };
-    return { label: "LOW", cls: "badge-green" };
+    if (!window.i18n) return score >= 8 ? { label: "CRITICAL", cls: "badge-red" } : (score >= 4 ? { label: "MODERATE", cls: "badge-orange" } : { label: "LOW", cls: "badge-green" });
+    
+    if (score >= 8) return { label: window.i18n.t("critical").toUpperCase(), cls: "badge-red" };
+    if (score >= 4) return { label: window.i18n.t("moderate").toUpperCase(), cls: "badge-orange" };
+    return { label: window.i18n.t("low").toUpperCase(), cls: "badge-green" };
   }
 
   function needIcon(needType) {

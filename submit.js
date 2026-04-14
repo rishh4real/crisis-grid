@@ -38,7 +38,7 @@
     formData.append("file", audioFile, filename);
     formData.append("model", "whisper-large-v3");
     formData.append("response_format", "json");
-    formData.append("language", "en");
+    if (window.i18n) formData.append("language", window.i18n.currentLang);
 
     return fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
       method: "POST",
@@ -302,7 +302,7 @@
 
     canvasEl.toBlob(function (blob) {
       addMedia("photo", dataUrl, blob);
-      toast("📸 Photo captured!", "success");
+      toast(window.i18n ? window.i18n.t("toast_photo_captured") : "📸 Photo captured!", "success");
       closeCamera();
     }, "image/jpeg", 0.85);
   }
@@ -488,12 +488,10 @@
           reportTextarea.dispatchEvent(new Event("input"));
           var url = URL.createObjectURL(file);
           addMedia("audio", url, file);
-          toast("Voice transcribed & attached!", "success");
-        })
-        .catch(function (err) {
-          toast("Transcription failed: " + err.message, "error");
-        })
-        .finally(function () {
+          toast(window.i18n ? window.i18n.t("toast_voice_attached") : "Voice transcribed & attached!", "success");
+        }).catch(function (err) {
+          toast((window.i18n ? window.i18n.t("toast_error") : "Transcription failed: ") + err.message, "error");
+        }).finally(function () {
           mediaStatus.textContent = "";
           voiceFileInput.value = "";
         });
@@ -629,27 +627,27 @@
     var fullReportText = locationPrefix ? locationPrefix + "Report: " + reportText : reportText;
 
     var ngoName = ngoNameInput.value.trim() || "Anonymous Field Worker";
-    setSubmitLoading(true, "Analysing with AI…");
+    setSubmitLoading(true, window.i18n ? window.i18n.t("btn_analyzing") : "Analysing with AI…");
     hidePreview();
-
+ 
     extractReportData(fullReportText)
       .then(function (extracted) {
         showPreview(extracted);
-        toast("Report analysed! Saving to database…", "info", 2000);
-
+        toast(window.i18n ? window.i18n.t("toast_analyzed") : "Report analysed! Saving to database…", "info", 2000);
+ 
         return geocode(extracted.location)
           .then(function (geo) { return { extracted: extracted, lat: geo.lat, lng: geo.lng }; })
           .catch(function () { return { extracted: extracted, lat: null, lng: null }; });
       })
       .then(function (result) {
         if (!db) {
-          toast("Firebase not configured — report extracted but NOT saved.", "warning");
+          toast(window.i18n ? window.i18n.t("toast_firebase_error") : "Firebase not configured — report extracted but NOT saved.", "warning");
           setSubmitLoading(false);
           return;
         }
-
-        setSubmitLoading(true, "Saving to database…");
-
+ 
+        setSubmitLoading(true, window.i18n ? window.i18n.t("btn_saving") : "Saving to database…");
+ 
         // Prepare media data (compressed photos as base64, metadata for video/audio)
         var mediaData = mediaAttachments.map(function (m) {
           if (m.type === "photo" && m.dataUrl.startsWith("data:")) {
@@ -657,7 +655,7 @@
           }
           return { type: m.type, duration: m.duration || 0, size: m.blob ? m.blob.size : 0 };
         });
-
+ 
         return db.collection("reports").add({
           rawText: reportText,
           ngoName: ngoName,
@@ -671,16 +669,17 @@
           media: mediaData,
           timestamp: firebase.firestore.FieldValue.serverTimestamp(),
         }).then(function () {
-          toast("✅ Report saved with " + mediaAttachments.length + " attachment(s)!", "success");
+          toast((window.i18n ? window.i18n.t("toast_success") : "✅ Report saved with ") + mediaAttachments.length + " attachment(s)!", "success");
           reportTextarea.value = "";
           ngoNameInput.value = "";
           charCounter.textContent = "0 / 1000";
           mediaAttachments = [];
           renderMediaPreviews();
+          hidePreview();
         });
       })
       .catch(function (err) {
-        toast("Error: " + err.message, "error");
+        toast((window.i18n ? window.i18n.t("toast_error") : "Error: ") + err.message, "error");
         console.error(err);
       })
       .finally(function () {

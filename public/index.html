@@ -5,10 +5,12 @@
   <!-- ENV must load before any module -->
   <script src="env-config.js"></script>
   <script src="theme.js"></script>
+  <script src="i18n.js"></script>
+  <script src="settings.js"></script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="description" content="CrisisGrid — Ground truth, delivered to those who act." />
-  <title>CrisisGrid — Emergency Response System</title>
+  <title data-i18n="site_title">CrisisGrid — Emergency Response System</title>
 
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -24,7 +26,7 @@
 <body>
 
   <!-- Emergency Banner -->
-  <div class="emergency-banner">
+  <div class="emergency-banner" data-i18n="emergency_banner">
     EMERGENCY RESPONSE SYSTEM — For authorized field workers and NGO coordinators only
   </div>
 
@@ -55,16 +57,33 @@
         </div>
         <div>
           <div class="navbar-name">CrisisGrid</div>
-          <div class="navbar-slogan">EMERGENCY COMMAND CENTER</div>
+          <div class="navbar-slogan" data-i18n="navbar_slogan">EMERGENCY COMMAND CENTER</div>
         </div>
       </a>
     </div>
     <div class="navbar-actions">
-      <button id="theme-toggle" class="btn theme-toggle"
-        style="padding: 6px 12px; font-size: 13px; border: 1px solid var(--border); background: var(--bg-secondary); color: var(--text-primary); cursor:pointer;">🌙
-        Dark Mode</button>
-      <a href="dashboard.html" class="nav-link" aria-label="View live map">🗺️ Dashboard</a>
-      <a href="submit.html" class="nav-link nav-link-primary" aria-label="Submit a field report">+ Submit Report</a>
+      <div class="settings-container">
+        <button id="settings-btn" class="btn" style="padding: 6px 12px; font-size: 16px; cursor:pointer;" aria-label="Settings">⚙️</button>
+        <div id="settings-dropdown" class="settings-dropdown">
+          <div class="settings-header" data-i18n="settings_title">Settings</div>
+          <div class="setting-item">
+            <div class="setting-label" data-i18n="settings_theme">Theme Mode</div>
+            <div class="setting-options">
+              <button class="setting-opt" data-set-theme="light" data-i18n="theme_light">Light</button>
+              <button class="setting-opt" data-set-theme="dark" data-i18n="theme_dark">Dark</button>
+            </div>
+          </div>
+          <div class="setting-item">
+            <div class="setting-label" data-i18n="settings_lang">Language</div>
+            <div class="setting-options">
+              <button class="setting-opt" data-set-lang="en" data-i18n="lang_en">English</button>
+              <button class="setting-opt" data-set-lang="hi" data-i18n="lang_hi">हिन्दी</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <a href="dashboard.html" class="nav-link" aria-label="View live map" data-i18n="nav_dashboard">🗺️ Dashboard</a>
+      <a href="submit.html" class="nav-link nav-link-primary" aria-label="Submit a field report" data-i18n="nav_submit">+ Submit Report</a>
     </div>
   </nav>
 
@@ -91,14 +110,14 @@
           opacity="0.5" />
       </svg>
     </div>
-    <h1 class="landing-title">Ground truth, delivered to those who act.</h1>
-    <p class="landing-subtitle">
+    <h1 class="landing-title" data-i18n="hero_title">Ground truth, delivered to those who act.</h1>
+    <p class="landing-subtitle" data-i18n="hero_subtitle">
       CrisisGrid is an official rapid incident reporting tool connecting field volunteers with automated AI extraction
       and real-time dispatch mapping.
     </p>
     <div class="landing-actions">
-      <a href="submit.html" class="btn btn-primary btn-lg">Submit Field Report</a>
-      <a href="dashboard.html" class="btn btn-secondary btn-lg">View Live Map</a>
+      <a href="submit.html" class="btn btn-primary btn-lg" data-i18n="btn_submit_report">Submit Field Report</a>
+      <a href="dashboard.html" class="btn btn-secondary btn-lg" data-i18n="btn_view_map">View Live Map</a>
     </div>
   </header>
 
@@ -106,42 +125,42 @@
   <div class="landing-stats-bar" aria-label="Live System Statistics">
     <div class="stat-box">
       <div class="stat-box-value" id="stat-total">0</div>
-      <div class="stat-box-label">Total Reports Active</div>
+      <div class="stat-box-label" data-i18n="stat_total_reports">Total Reports Active</div>
     </div>
     <div class="stat-box">
       <div class="stat-box-value" id="stat-critical" style="color: #e74c3c;">0</div>
-      <div class="stat-box-label">Critical Alerts</div>
+      <div class="stat-box-label" data-i18n="stat_critical_alerts">Critical Alerts</div>
     </div>
     <div class="stat-box">
       <div class="stat-box-value" id="stat-affected">0</div>
-      <div class="stat-box-label">People Affected</div>
+      <div class="stat-box-label" data-i18n="stat_people_affected">People Affected</div>
     </div>
   </div>
 
   <!-- How It Works -->
   <section class="landing-section">
     <div class="section-header">
-      <h2 class="section-title">How It Works</h2>
-      <p style="color:var(--text-muted); max-width:500px; margin:0 auto;">An automated, rapid-response pipeline scaling
+      <h2 class="section-title" data-i18n="section_how_it_works">How It Works</h2>
+      <p style="color:var(--text-muted); max-width:500px; margin:0 auto;" data-i18n="section_how_subtitle">An automated, rapid-response pipeline scaling
         ground-level data to centralized dashboards instantly.</p>
     </div>
     <div class="card-grid">
       <div class="info-card">
         <div class="info-card-icon">🎙️</div>
-        <h3 class="info-card-title">1. Field Collection</h3>
-        <p class="info-card-desc">Volunteers and workers upload raw situational audio, video, or text reports over
+        <h3 class="info-card-title" data-i18n="how_step_1_title">1. Field Collection</h3>
+        <p class="info-card-desc" data-i18n="how_step_1_desc">Volunteers and workers upload raw situational audio, video, or text reports over
           low-bandwidth constraints directly from the crisis zone.</p>
       </div>
       <div class="info-card">
         <div class="info-card-icon">🤖</div>
-        <h3 class="info-card-title">2. AI Extraction</h3>
-        <p class="info-card-desc">Advanced NLP precisely extrapolates structured JSON intelligence—including exact
+        <h3 class="info-card-title" data-i18n="how_step_2_title">2. AI Extraction</h3>
+        <p class="info-card-desc" data-i18n="how_step_2_desc">Advanced NLP precisely extrapolates structured JSON intelligence—including exact
           locations, core needs, urgency, and estimated populace impacts.</p>
       </div>
       <div class="info-card">
         <div class="info-card-icon">🗺️</div>
-        <h3 class="info-card-title">3. Live Dispatch</h3>
-        <p class="info-card-desc">Coordinates are geoded and surfaced automatically to the main dispatch panel to
+        <h3 class="info-card-title" data-i18n="how_step_3_title">3. Live Dispatch</h3>
+        <p class="info-card-desc" data-i18n="how_step_3_desc">Coordinates are geoded and surfaced automatically to the main dispatch panel to
           facilitate instantaneous deployment prioritization.</p>
       </div>
     </div>
@@ -150,7 +169,7 @@
   <!-- Who Is It For -->
   <section class="landing-section-alt">
     <div class="section-header">
-      <h2 class="section-title">Who is it for?</h2>
+      <h2 class="section-title" data-i18n="section_who_for">Who is it for?</h2>
     </div>
     <div class="card-grid">
       <div class="info-card">
@@ -175,7 +194,7 @@
   </section>
 
   <footer class="site-footer">
-    <p><strong>CrisisGrid Command Center</strong> &copy; 2026. For authorized use only.</p>
+    <p data-i18n="footer_credits"><strong>CrisisGrid Command Center</strong> &copy; 2026. For authorized use only.</p>
   </footer>
 
   <!-- Firebase SDK (compat mode) -->

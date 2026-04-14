@@ -5,11 +5,13 @@
   <!-- ENV must load before any module -->
   <script src="env-config.js"></script>
   <script src="theme.js"></script>
+  <script src="i18n.js"></script>
+  <script src="settings.js"></script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="description"
     content="CrisisGrid — Submit a field report. Voice notes and AI-powered crisis data extraction." />
-  <title>CrisisGrid — Submit Field Report</title>
+  <title data-i18n="submit_field_report">CrisisGrid — Submit Field Report</title>
 
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -564,7 +566,7 @@
 <body>
 
   <!-- Emergency Header -->
-  <div class="emergency-banner">
+  <div class="emergency-banner" data-i18n="emergency_banner">
     EMERGENCY RESPONSE SYSTEM — For authorized field workers and NGO coordinators only
   </div>
 
@@ -595,17 +597,36 @@
       </div>
       <div>
         <div class="navbar-name">CrisisGrid</div>
-        <div class="navbar-slogan">EMERGENCY COMMAND CENTER</div>
+        <div class="navbar-slogan" data-i18n="navbar_slogan">EMERGENCY COMMAND CENTER</div>
       </div>
       </a>
     </div>
 
     <div class="navbar-actions">
-      <button id="theme-toggle" class="btn theme-toggle" style="padding: 6px 12px; font-size: 13px; border: 1px solid var(--border); background: var(--bg-secondary); color: var(--text-primary); cursor:pointer;">🌙 Dark Mode</button>
-      <a href="dashboard.html" class="nav-link" aria-label="View live crisis map">
+      <div class="settings-container">
+        <button id="settings-btn" class="btn" style="padding: 6px 12px; font-size: 16px; cursor:pointer;" aria-label="Settings">⚙️</button>
+        <div id="settings-dropdown" class="settings-dropdown">
+          <div class="settings-header" data-i18n="settings_title">Settings</div>
+          <div class="setting-item">
+            <div class="setting-label" data-i18n="settings_theme">Theme Mode</div>
+            <div class="setting-options">
+              <button class="setting-opt" data-set-theme="light" data-i18n="theme_light">Light</button>
+              <button class="setting-opt" data-set-theme="dark" data-i18n="theme_dark">Dark</button>
+            </div>
+          </div>
+          <div class="setting-item">
+            <div class="setting-label" data-i18n="settings_lang">Language</div>
+            <div class="setting-options">
+              <button class="setting-opt" data-set-lang="en" data-i18n="lang_en">English</button>
+              <button class="setting-opt" data-set-lang="hi" data-i18n="lang_hi">हिन्दी</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <a href="dashboard.html" class="nav-link" aria-label="View live crisis map" data-i18n="nav_dashboard">
         🗺️ Live Map
       </a>
-      <span class="nav-link active" aria-current="page">+ Submit Report</span>
+      <span class="nav-link active" data-i18n="nav_submit">+ Submit Report</span>
     </div>
   </nav>
 
@@ -613,8 +634,8 @@
   <main class="submit-wrapper page-fade" role="main">
     <div class="submit-card">
       <div class="submit-header">
-        <h1>📡 Submit Field Report</h1>
-        <p>Type or dictate your on-ground crisis observation.<br>AI will extract structured data for the response map.
+        <h1 data-i18n="submit_field_report">📡 Submit Field Report</h1>
+        <p data-i18n="submit_subtitle">Type or dictate your on-ground crisis observation.<br>AI will extract structured data for the response map.
         </p>
       </div>
 
@@ -623,20 +644,20 @@
         <!-- Media Attachments section -->
         <div class="form-section">
           <div class="form-section-title">
-            <span>📎 Media Attachments</span>
+            <span data-i18n="section_media">📎 Media Attachments</span>
           </div>
           <div class="media-grid">
             <button type="button" id="photo-btn" class="media-btn" aria-label="Take a photo">
-              <span class="media-icon">📷</span> Take Photo
+              <span class="media-icon">📷</span> <span data-i18n="btn_photo">Take Photo</span>
             </button>
             <button type="button" id="video-btn" class="media-btn" aria-label="Record video">
-              <span class="media-icon">🎥</span> Record Video
+              <span class="media-icon">🎥</span> <span data-i18n="btn_video">Record Video</span>
             </button>
             <button type="button" id="mic-btn" class="media-btn" aria-label="Record voice note">
-              <span class="media-icon">🎙️</span> Record Voice
+              <span class="media-icon">🎙️</span> <span data-i18n="btn_voice">Record Voice</span>
             </button>
             <button type="button" id="voice-upload-btn" class="media-btn" aria-label="Upload audio file">
-              <span class="media-icon">📁</span> Upload File
+              <span class="media-icon">📁</span> <span data-i18n="btn_upload">Upload File</span>
             </button>
             <input type="file" id="voice-file-input" accept="audio/*" />
             <input type="file" id="photo-file-input" accept="image/*" />
@@ -648,7 +669,7 @@
 
           <!-- Media preview gallery -->
           <div id="media-preview-area">
-            <div class="media-preview-title">Attached Evidence</div>
+            <div class="media-preview-title" data-i18n="attached_evidence">Attached Evidence</div>
             <div class="media-preview-list" id="media-preview-list"></div>
           </div>
         </div>
@@ -656,11 +677,11 @@
         <!-- Written report -->
         <div class="form-section">
           <div class="form-section-title">
-            <span>📝 Crisis Report</span>
+            <span data-i18n="section_crisis_report">📝 Crisis Report</span>
           </div>
           <div class="form-group">
             <div class="textarea-wrapper">
-              <textarea id="report-text" class="form-control"
+              <textarea id="report-text" class="form-control" data-i18n="placeholder_report"
                 placeholder="Describe the crisis you're witnessing, e.g.&#10;'50 families need food and clean water in Kolhapur after severe flooding. Roads are blocked. Children are showing signs of dehydration.'"
                 maxlength="1000" aria-label="Crisis report text" required></textarea>
               <span class="char-counter" id="char-count">0 / 1000</span>
@@ -671,18 +692,18 @@
         <!-- Reporter Details -->
         <div class="form-section">
           <div class="form-section-title">
-            <span>🏢 Reporter Details</span>
+            <span data-i18n="section_reporter_details">🏢 Reporter Details</span>
           </div>
           <div class="form-group" style="margin-bottom: 12px;">
-            <label class="form-label" for="reporter-city">City</label>
+            <label class="form-label" for="reporter-city" data-i18n="label_city">City</label>
             <input type="text" id="reporter-city" class="form-control"
               placeholder="e.g. Kathmandu" maxlength="120"
               aria-label="City" required />
           </div>
           <div class="form-group" style="margin-bottom: 12px;">
-            <label class="form-label" for="reporter-country">Country</label>
+            <label class="form-label" for="reporter-country" data-i18n="label_country">Country</label>
             <select id="reporter-country" class="form-control" aria-label="Country" required>
-              <option value="" disabled selected>Select a country</option>
+              <option value="" disabled selected data-i18n="select_country">Select a country</option>
               <option value="Afghanistan">Afghanistan</option>
               <option value="Bangladesh">Bangladesh</option>
               <option value="Haiti">Haiti</option>
@@ -705,7 +726,7 @@
             </select>
           </div>
           <div class="form-group">
-            <label class="form-label" for="ngo-name">Organisation / NGO Name (optional)</label>
+            <label class="form-label" for="ngo-name" data-i18n="label_ngo">Organisation / NGO Name (optional)</label>
             <input type="text" id="ngo-name" class="form-control"
               placeholder="e.g. Red Cross India, UNICEF, Local Volunteer" maxlength="120"
               aria-label="Organisation or NGO name" />
@@ -714,22 +735,22 @@
 
         <!-- AI extraction preview -->
         <div id="preview-card" role="region" aria-label="AI extracted data preview">
-          <div class="preview-title">✨ AI Extracted Data</div>
+          <div class="preview-title" data-i18n="ai_extracted_data">✨ AI Extracted Data</div>
           <div class="preview-grid">
             <div class="preview-field">
-              <span class="key">Location</span>
+              <span class="key" data-i18n="key_location">Location</span>
               <span class="val" id="preview-location">—</span>
             </div>
             <div class="preview-field">
-              <span class="key">Need Type</span>
+              <span class="key" data-i18n="key_need">Need Type</span>
               <span class="val" id="preview-need">—</span>
             </div>
             <div class="preview-field">
-              <span class="key">Urgency Score</span>
+              <span class="key" data-i18n="key_urgency">Urgency Score</span>
               <span class="val" id="preview-urgency">—</span>
             </div>
             <div class="preview-field">
-              <span class="key">Population Affected</span>
+              <span class="key" data-i18n="key_pop">Population Affected</span>
               <span class="val" id="preview-pop">—</span>
             </div>
           </div>
@@ -739,7 +760,7 @@
         <div class="submit-actions">
           <button type="submit" id="submit-btn" class="btn btn-primary btn-lg btn-full">
             <span id="submit-spinner"></span>
-            <span id="submit-btn-text">Submit Report</span>
+            <span id="submit-btn-text" data-i18n="btn_submit_final">Submit Report</span>
           </button>
         </div>
 
@@ -750,7 +771,7 @@
   <!-- Footer -->
   <footer class="submit-footer">
     Built with ❤️ for humanitarian response &middot;
-    <a href="dashboard.html">View Live Map →</a>
+    <a href="dashboard.html" data-i18n="map_view_live">View Live Map →</a>
   </footer>
 
   <!-- Camera / Video Modal -->
