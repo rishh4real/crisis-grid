@@ -138,7 +138,59 @@
     /* Ensure map popup buttons receive clicks (Leaflet + overlays) */
     .leaflet-popup-content { pointer-events: auto; }
     .leaflet-popup-content .popup-btn { cursor: pointer; position: relative; z-index: 2; }
-
+    
+    /* ── Action Plan Premium Section ───────────────────── */
+    .action-plan-container {
+      background: linear-gradient(135deg, rgba(37, 99, 235, 0.05) 0%, rgba(37, 99, 235, 0.1) 100%);
+      border: 1px solid rgba(37, 99, 235, 0.2);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      position: relative;
+      overflow: hidden;
+    }
+    .action-plan-container::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; height: 2px;
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    }
+    .action-plan-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .action-plan-badge {
+      background: var(--accent);
+      color: #fff;
+      font-size: 10px;
+      font-weight: 800;
+      padding: 2px 8px;
+      border-radius: 99px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .action-plan-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .action-plan-content {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-primary);
+      line-height: 1.4;
+    }
+    .action-plan-robot {
+      position: absolute;
+      right: -10px;
+      bottom: -10px;
+      font-size: 48px;
+      opacity: 0.05;
+      transform: rotate(-15deg);
+    }
     /* ── Sidebar Report List ─────────────────────────────────────── */
     .report-list-item {
       padding: 12px; border-radius: var(--radius-md); border: 1px solid var(--border);
@@ -187,9 +239,26 @@
       border-color: var(--accent);
       background: var(--bg-primary);
     }
-    .sidebar-action-btn--secondary {
+    .hotspot-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .hotspot-btn {
+      flex: 1;
+      border: 1px solid var(--border-bright);
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+      border-radius: var(--radius-sm);
+      font-size: 11px;
+      font-weight: 600;
+      padding: 7px 8px;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+    .hotspot-btn:hover {
+      border-color: var(--accent);
       background: var(--bg-primary);
-      color: var(--text-label);
     }
 
     .reports-drawer {
@@ -372,78 +441,11 @@
       flex-shrink: 0;
     }
 
-    #hotspot-list {
-      overflow-y: auto;
-      padding: 0 12px 8px;
-      max-height: 280px;
-    }
-
-    /* Recent reports inline section */
-    #recent-reports-list {
+    #hotspot-list,
+    #recent-report-list {
       overflow-y: auto;
       padding: 0 12px 12px;
-      max-height: 240px;
-    }
-    .sidebar-scroll-area {
-      flex: 1;
-      overflow-y: auto;
-      display: flex;
-      flex-direction: column;
-    }
-    .recent-report-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-md);
-      padding: 12px 14px;
-      margin-bottom: 8px;
-      cursor: pointer;
-      transition: var(--transition);
-    }
-    .recent-report-card:hover {
-      border-color: var(--accent);
-      background: var(--bg-primary);
-    }
-    .recent-report-card-top {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      gap: 8px;
-      margin-bottom: 6px;
-    }
-    .recent-report-loc {
-      font-size: 12px;
-      font-weight: 700;
-      color: var(--text-primary);
-      line-height: 1.3;
-      flex: 1;
-    }
-    .recent-report-urgency {
-      font-size: 12px;
-      font-weight: 800;
-      flex-shrink: 0;
-    }
-    .recent-report-meta {
-      font-size: 11px;
-      color: var(--text-muted);
-      margin-bottom: 8px;
-    }
-    .recent-report-full-btn {
-      width: 100%;
-      padding: 6px 10px;
-      border-radius: var(--radius-sm);
-      border: 1px solid var(--border-bright);
-      background: transparent;
-      font-size: 11px;
-      font-weight: 600;
-      color: var(--accent);
-      cursor: pointer;
-      transition: var(--transition);
-      text-align: center;
-    }
-    .recent-report-full-btn:hover {
-      background: var(--accent);
-      color: #fff;
-      border-color: var(--accent);
+      max-height: 30vh;
     }
 
     .hotspot-item {
@@ -727,26 +729,22 @@
 
       <div class="sidebar-actions">
         <button type="button" id="btn-all-reports-drawer" class="sidebar-action-btn" data-i18n="btn_all_reports">
-          All Reports
+          All reports
         </button>
       </div>
 
-      <div class="sidebar-scroll-area">
-        <div class="sidebar-section-title" aria-label="Top 3 hotspots">🔥 Top Hotspots</div>
+      <div class="sidebar-section-title" aria-label="Top 3 hotspots">🔥 Top Hotspots</div>
 
-        <div id="hotspot-list" role="list" aria-label="Crisis hotspot list">
-          <!-- Populated by app.js -->
-          <div style="text-align:center;padding:40px 0;color:var(--text-muted);">
-            <div style="font-size:32px;margin-bottom:10px;animation:spin 2s linear infinite">⏳</div>
-            <div style="font-size:13px;" data-i18n="connecting_feed">Connecting to live feed…</div>
-          </div>
-        </div>
-
-        <div class="sidebar-section-title" aria-label="Recent reports">🕐 Recent Reports</div>
-        <div id="recent-reports-list" role="list" aria-label="Recent crisis reports">
-          <!-- Populated by app.js -->
+      <div id="hotspot-list" role="list" aria-label="Crisis hotspot list">
+        <!-- Populated by app.js -->
+        <div style="text-align:center;padding:40px 0;color:var(--text-muted);">
+          <div style="font-size:32px;margin-bottom:10px;animation:spin 2s linear infinite">⏳</div>
+          <div style="font-size:13px;" data-i18n="connecting_feed">Connecting to live feed…</div>
         </div>
       </div>
+
+      <div class="sidebar-section-title" aria-label="Recent 2 reports">🕒 Recent Reports</div>
+      <div id="recent-report-list" role="list" aria-label="Recent report list"></div>
 
       <div class="sidebar-footer">
         <span data-i18n="last_updated">Updated:</span> <strong id="last-updated">—</strong>
@@ -824,6 +822,15 @@
             <span id="m-time" class="modal-field-value">—</span>
           </div>
         </div>
+        <div class="action-plan-container" id="m-action-plan-section">
+          <div class="action-plan-header">
+            <span class="action-plan-badge">AI INSIGHT</span>
+            <span class="action-plan-title">Auto-generated Action Plan</span>
+          </div>
+          <div id="m-action-plan" class="action-plan-content">Analyzing field data...</div>
+          <div class="action-plan-robot">🤖</div>
+        </div>
+
         <div class="modal-field">
           <span class="modal-field-label" data-i18n="modal_original_text">Original report text</span>
           <div id="m-text" class="modal-text-block"></div>
@@ -841,6 +848,6 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 
   <!-- App logic -->
-  <script src="app.js?v=1.4"></script>
+  <script src="app.js?v=1.7"></script>
 </body>
 </html>

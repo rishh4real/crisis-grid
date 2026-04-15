@@ -187,9 +187,26 @@
       border-color: var(--accent);
       background: var(--bg-primary);
     }
-    .sidebar-action-btn--secondary {
+    .hotspot-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .hotspot-btn {
+      flex: 1;
+      border: 1px solid var(--border-bright);
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+      border-radius: var(--radius-sm);
+      font-size: 11px;
+      font-weight: 600;
+      padding: 7px 8px;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+    .hotspot-btn:hover {
+      border-color: var(--accent);
       background: var(--bg-primary);
-      color: var(--text-label);
     }
 
     .reports-drawer {
@@ -372,10 +389,11 @@
       flex-shrink: 0;
     }
 
-    #hotspot-list {
-      flex: 1;
+    #hotspot-list,
+    #recent-report-list {
       overflow-y: auto;
       padding: 0 12px 12px;
+      max-height: 30vh;
     }
 
     .hotspot-item {
@@ -661,9 +679,6 @@
         <button type="button" id="btn-all-reports-drawer" class="sidebar-action-btn" data-i18n="btn_all_reports">
           All reports
         </button>
-        <button type="button" id="btn-recent-reports-drawer" class="sidebar-action-btn sidebar-action-btn--secondary" data-i18n="btn_recent_reports">
-          Recent reports
-        </button>
       </div>
 
       <div class="sidebar-section-title" aria-label="Top 3 hotspots">🔥 Top Hotspots</div>
@@ -675,6 +690,9 @@
           <div style="font-size:13px;" data-i18n="connecting_feed">Connecting to live feed…</div>
         </div>
       </div>
+
+      <div class="sidebar-section-title" aria-label="Recent 2 reports">🕒 Recent Reports</div>
+      <div id="recent-report-list" role="list" aria-label="Recent report list"></div>
 
       <div class="sidebar-footer">
         <span data-i18n="last_updated">Updated:</span> <strong id="last-updated">—</strong>
@@ -769,6 +787,6 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 
   <!-- App logic -->
-  <script src="app.js?v=1.4"></script>
+  <script src="app.js?v=1.7"></script>
 </body>
 </html>

@@ -10,7 +10,7 @@ const GROQ_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions";
 
 /**
  * @param {string} reportText  Raw field-worker report text
- * @returns {Promise<{location:string, needType:string, urgencyScore:number, populationAffected:number}>}
+ * @returns {Promise<{location:string, needType:string, urgencyScore:number, populationAffected:number, actionPlan:string}>}
  */
 export async function extractReportData(reportText) {
   const apiKey = window.__ENV?.GROQ_API_KEY;
@@ -19,7 +19,7 @@ export async function extractReportData(reportText) {
   }
 
   const prompt = `
-You are a humanitarian crisis data extractor. Analyze the following field report and extract structured information.
+You are a humanitarian crisis data extractor and response strategist. Analyze the following field report and extract structured information.
 
 Field Report:
 "${reportText}"
@@ -29,7 +29,8 @@ Return ONLY a valid JSON object (no markdown, no explanation) with exactly these
   "location": "<city, region, or place mentioned>",
   "needType": "<primary need: Food | Water | Medical | Shelter | Evacuation | Other>",
   "urgencyScore": <integer 1-10, 10 being most critical>,
-  "populationAffected": <estimated number of people affected as integer>
+  "populationAffected": <estimated number of people affected as integer>,
+  "actionPlan": "<concise actionable response plan, max 15 words>"
 }
 
 Rules:
@@ -37,6 +38,7 @@ Rules:
 - urgencyScore must be an integer between 1 and 10
 - populationAffected must be an integer (estimate if not explicit)
 - needType must be one of: Food, Water, Medical, Shelter, Evacuation, Other
+- actionPlan should be extremely concise and actionable (e.g., "Send 2 teams + 50 food packets within 3 hrs")
 `.trim();
 
   const response = await fetch(GROQ_ENDPOINT, {
@@ -84,5 +86,6 @@ Rules:
     needType: String(parsed.needType || "Other"),
     urgencyScore: Math.min(10, Math.max(1, parseInt(parsed.urgencyScore) || 5)),
     populationAffected: Math.max(0, parseInt(parsed.populationAffected) || 0),
+    actionPlan: String(parsed.actionPlan || "Assess situation immediately."),
   };
 }

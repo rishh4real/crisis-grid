@@ -35,6 +35,7 @@
   const sidebar = document.getElementById("sidebar");
   const sidebarBtn = document.getElementById("sidebar-toggle");
   const hotspotList = document.getElementById("hotspot-list");
+  const recentReportList = document.getElementById("recent-report-list");
   const reportListCount = document.getElementById("report-count");
   const statsHigh = document.getElementById("stats-high");
   const statsMed = document.getElementById("stats-med");
@@ -49,7 +50,6 @@
   const reportsDrawerClose = document.getElementById("reports-drawer-close");
   const reportsDrawerBackdrop = document.getElementById("reports-drawer-backdrop");
   const btnAllReportsDrawer = document.getElementById("btn-all-reports-drawer");
-  const btnRecentReportsDrawer = document.getElementById("btn-recent-reports-drawer");
 
   function urgencyNumber(reportOrScore) {
     const raw =
@@ -225,7 +225,7 @@
             const uc = urgencyColor(u);
             const uDisp = Number.isFinite(u) ? u : "\u2014";
             return (
-              `<div class="hotspot-item" onclick="window.panToReport('${escAttr(r.id)}')">` +
+              `<div class="hotspot-item" data-report-id="${escAttr(r.id)}">` +
               '<div class="hotspot-header">' +
               `<span class="hotspot-rank">${medals[i] || "#" + (i + 1)}</span>` +
               `<div class="hotspot-title">${needIcon(r.needType)} ${esc(r.location)}</div>` +
@@ -239,6 +239,46 @@
               '<div class="hotspot-stat">Affected: ' +
               Number(r.populationAffected || 0).toLocaleString() +
               "</div>" +
+              "</div>" +
+              '<div class="hotspot-actions">' +
+              `<button type="button" class="hotspot-btn" data-action="pan" data-report-id="${escAttr(r.id)}">Locate</button>` +
+              `<button type="button" class="hotspot-btn" data-action="view" data-report-id="${escAttr(r.id)}">View Full Report</button>` +
+              "</div></div>"
+            );
+          })
+          .join("");
+      }
+    }
+
+    if (recentReportList) {
+      const latest = [...allReports].sort((a, b) => reportTimeMs(b) - reportTimeMs(a)).slice(0, 2);
+      if (latest.length === 0) {
+        recentReportList.innerHTML = '<div class="hotspot-empty">No recent reports yet.</div>';
+      } else {
+        recentReportList.innerHTML = latest
+          .map((r) => {
+            const u = urgencyNumber(r);
+            const uc = urgencyColor(u);
+            const uDisp = Number.isFinite(u) ? u : "\u2014";
+            return (
+              `<div class="hotspot-item" data-report-id="${escAttr(r.id)}">` +
+              '<div class="hotspot-header">' +
+              `<span class="hotspot-rank">\uD83D\uDD50</span>` +
+              `<div class="hotspot-title">${needIcon(r.needType)} ${esc(r.location)}</div>` +
+              "</div>" +
+              '<div class="hotspot-meta">' +
+              '<div class="hotspot-stat">Urgency: <span style="color:' +
+              uc.fill +
+              '">' +
+              uDisp +
+              "/10</span></div>" +
+              '<div class="hotspot-stat">Affected: ' +
+              Number(r.populationAffected || 0).toLocaleString() +
+              "</div>" +
+              "</div>" +
+              '<div class="hotspot-actions">' +
+              `<button type="button" class="hotspot-btn" data-action="pan" data-report-id="${escAttr(r.id)}">Locate</button>` +
+              `<button type="button" class="hotspot-btn" data-action="view" data-report-id="${escAttr(r.id)}">View Full Report</button>` +
               "</div></div>"
             );
           })
@@ -354,9 +394,6 @@
   if (btnAllReportsDrawer) {
     btnAllReportsDrawer.addEventListener("click", () => openReportsDrawer("urgency"));
   }
-  if (btnRecentReportsDrawer) {
-    btnRecentReportsDrawer.addEventListener("click", () => openReportsDrawer("recent"));
-  }
   if (reportsDrawerClose) {
     reportsDrawerClose.addEventListener("click", closeReportsDrawer);
   }
@@ -371,6 +408,24 @@
       if (id) window.panToReport(id);
     });
   }
+
+  function attachSidebarListEvents(container) {
+    if (!container) return;
+    container.addEventListener("click", (e) => {
+      const target = e.target.closest("[data-action][data-report-id]");
+      if (!target) return;
+      const id = target.getAttribute("data-report-id");
+      const action = target.getAttribute("data-action");
+      if (!id) return;
+      e.preventDefault();
+      e.stopPropagation();
+      if (action === "view") window.viewDetailedReport(id);
+      if (action === "pan") window.panToReport(id);
+    });
+  }
+
+  attachSidebarListEvents(hotspotList);
+  attachSidebarListEvents(recentReportList);
 
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && reportsDrawer && reportsDrawer.classList.contains("open")) {
@@ -455,30 +510,31 @@
         } else {
           mediaSection.style.display = "block";
           const blocks = mediaArr.map((m, idx) => {
-            if (m && m.data && m.type === "photo") {
+          var mediaSrc = m && (m.url || m.data);
+          if (m && mediaSrc && m.type === "photo") {
               return (
                 '<div class="modal-media-item"><img src="' +
-                escAttr(m.data) +
+                escAttr(mediaSrc) +
                 '" alt="Photo ' +
                 (idx + 1) +
                 '" /></div>'
               );
             }
-            if (m && m.data && m.type === "video") {
+            if (m && mediaSrc && m.type === "video") {
               return (
                 '<div class="modal-media-item"><video controls playsinline src="' +
-                escAttr(m.data) +
+                escAttr(mediaSrc) +
                 '"></video></div>'
               );
             }
-            if (m && m.data && m.type === "audio") {
+            if (m && mediaSrc && m.type === "audio") {
               const dur =
                 m.duration && Number(m.duration) > 0
                   ? '<span class="modal-media-meta">' + esc(String(m.duration)) + "s</span>"
                   : "";
               return (
                 '<div class="modal-media-item modal-media-audio"><audio controls src="' +
-                escAttr(m.data) +
+                escAttr(mediaSrc) +
                 '"></audio>' +
                 dur +
                 "</div>"

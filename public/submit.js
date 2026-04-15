@@ -66,9 +66,9 @@
       return Promise.reject(new Error("GROQ_API_KEY not configured in env-config.js"));
     }
     var prompt =
-      'You are a humanitarian crisis data extractor. Analyze the following field report and extract structured information.\n\nField Report:\n"' +
+      'You are a humanitarian crisis data extractor and response strategist. Analyze the following field report and extract structured information.\n\nField Report:\n"' +
       reportText +
-      '"\n\nReturn ONLY a valid JSON object (no markdown, no explanation) with exactly these fields:\n{\n  "location": "<city, region, or place mentioned>",\n  "needType": "<primary need: Food | Water | Medical | Shelter | Evacuation | Other>",\n  "urgencyScore": <integer 1-10, 10 being most critical>,\n  "populationAffected": <estimated number of people affected as integer>\n}\n\nRules:\n- If location is unclear, infer from context or use "Unknown"\n- urgencyScore must be an integer between 1 and 10\n- populationAffected must be an integer (estimate if not explicit)\n- needType must be one of: Food, Water, Medical, Shelter, Evacuation, Other';
+      '"\n\nReturn ONLY a valid JSON object (no markdown, no explanation) with exactly these fields:\n{\n  "location": "<city, region, or place mentioned>",\n  "needType": "<primary need: Food | Water | Medical | Shelter | Evacuation | Other>",\n  "urgencyScore": <integer 1-10, 10 being most critical>,\n  "populationAffected": <estimated number of people affected as integer>,\n  "actionPlan": "<concise actionable response plan, max 15 words>"\n}\n\nRules:\n- If location is unclear, infer from context or use "Unknown"\n- urgencyScore must be an integer between 1 and 10\n- populationAffected must be an integer (estimate if not explicit)\n- needType must be one of: Food, Water, Medical, Shelter, Evacuation, Other\n- actionPlan should be extremely concise and actionable (e.g., "Send 2 teams + 50 food packets within 3 hrs")';
 
     return fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
@@ -107,6 +107,7 @@
           needType: String(parsed.needType || "Other"),
           urgencyScore: Math.min(10, Math.max(1, parseInt(parsed.urgencyScore) || 5)),
           populationAffected: Math.max(0, parseInt(parsed.populationAffected) || 0),
+          actionPlan: String(parsed.actionPlan || "Assess situation immediately."),
         };
       });
   }
@@ -125,6 +126,7 @@
 
   // ── Firebase init ───────────────────────────────────────────────────────
   var db = null;
+  var storageRoot = null;
   function initFirebase() {
     if (typeof firebase === "undefined") return false;
     var cfg = ENV.FIREBASE_CONFIG;
@@ -132,6 +134,9 @@
     try {
       if (!firebase.apps.length) firebase.initializeApp(cfg);
       db = firebase.firestore();
+      if (firebase.storage) {
+        storageRoot = firebase.storage().ref();
+      }
       return true;
     } catch (e) {
       console.error("Firebase init error:", e);
@@ -656,6 +661,54 @@
     );
   }
 
+  /** Upload attachments to Firebase Storage and return URL-backed media metadata. */
+  function uploadMediaToStorage(items) {
+    if (!storageRoot) {
+      return Promise.reject(new Error("Firebase Storage is not available."));
+    }
+    var stamp = Date.now();
+    return Promise.all(
+      items.map(function (m, idx) {
+        if (!m || !m.blob) {
+          return Promise.resolve({
+            type: m && m.type ? m.type : "unknown",
+            duration: (m && m.duration) || 0,
+            skipped: true,
+          });
+        }
+        var ext = "bin";
+        var mime = (m.blob.type || "").toLowerCase();
+        if (mime.indexOf("image/") === 0) ext = "jpg";
+        else if (mime.indexOf("video/") === 0) ext = "webm";
+        else if (mime.indexOf("audio/") === 0) ext = "webm";
+        var path =
+          "reports/" +
+          stamp +
+          "/" +
+          (m.type || "file") +
+          "_" +
+          idx +
+          "_" +
+          Math.random().toString(36).slice(2, 8) +
+          "." +
+          ext;
+        var ref = storageRoot.child(path);
+        return ref.put(m.blob).then(function (snap) {
+          return snap.ref.getDownloadURL().then(function (url) {
+            return {
+              type: m.type,
+              url: url,
+              duration: m.duration || 0,
+              mime: (m.blob && m.blob.type) || "",
+              storagePath: path,
+              size: m.blob.size || 0,
+            };
+          });
+        });
+      })
+    );
+  }
+
   document.getElementById("report-form").addEventListener("submit", function (e) {
     e.preventDefault();
 
@@ -702,16 +755,23 @@
  
         setSubmitLoading(true, window.i18n ? window.i18n.t("btn_saving") : "Saving to database…");
 
-        return buildMediaForFirestore(mediaAttachments).then(function (mediaData) {
-          if (mediaData.some(function (x) { return x.tooLarge; })) {
-            toast(
-              "Some files were too large for the database and were not fully saved. Try shorter audio/video or fewer attachments.",
-              "warning",
-              8000
-            );
-          }
-
-          return db.collection("reports").add({
+        setSubmitLoading(true, "Uploading attachments…");
+        return uploadMediaToStorage(mediaAttachments)
+          .catch(function () {
+            // Fallback for projects without Firebase Storage rules/config.
+            return buildMediaForFirestore(mediaAttachments).then(function (fallbackData) {
+              if (fallbackData.some(function (x) { return x.tooLarge; })) {
+                toast(
+                  "Some files were too large for database fallback. Enable Firebase Storage to upload larger videos.",
+                  "warning",
+                  9000
+                );
+              }
+              return fallbackData;
+            });
+          })
+          .then(function (mediaData) {
+            return db.collection("reports").add({
             rawText: reportText,
             reporterName: reporterName,
             city: city,
@@ -722,6 +782,7 @@
             needType: result.extracted.needType,
             urgencyScore: result.extracted.urgencyScore,
             populationAffected: result.extracted.populationAffected,
+            actionPlan: result.extracted.actionPlan,
             lat: result.lat,
             lng: result.lng,
             mediaCount: mediaAttachments.length,

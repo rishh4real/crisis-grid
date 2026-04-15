@@ -125,6 +125,7 @@
 
   // ── Firebase init ───────────────────────────────────────────────────────
   var db = null;
+  var storageRoot = null;
   function initFirebase() {
     if (typeof firebase === "undefined") return false;
     var cfg = ENV.FIREBASE_CONFIG;
@@ -132,6 +133,9 @@
     try {
       if (!firebase.apps.length) firebase.initializeApp(cfg);
       db = firebase.firestore();
+      if (firebase.storage) {
+        storageRoot = firebase.storage().ref();
+      }
       return true;
     } catch (e) {
       console.error("Firebase init error:", e);
@@ -656,6 +660,54 @@
     );
   }
 
+  /** Upload attachments to Firebase Storage and return URL-backed media metadata. */
+  function uploadMediaToStorage(items) {
+    if (!storageRoot) {
+      return Promise.reject(new Error("Firebase Storage is not available."));
+    }
+    var stamp = Date.now();
+    return Promise.all(
+      items.map(function (m, idx) {
+        if (!m || !m.blob) {
+          return Promise.resolve({
+            type: m && m.type ? m.type : "unknown",
+            duration: (m && m.duration) || 0,
+            skipped: true,
+          });
+        }
+        var ext = "bin";
+        var mime = (m.blob.type || "").toLowerCase();
+        if (mime.indexOf("image/") === 0) ext = "jpg";
+        else if (mime.indexOf("video/") === 0) ext = "webm";
+        else if (mime.indexOf("audio/") === 0) ext = "webm";
+        var path =
+          "reports/" +
+          stamp +
+          "/" +
+          (m.type || "file") +
+          "_" +
+          idx +
+          "_" +
+          Math.random().toString(36).slice(2, 8) +
+          "." +
+          ext;
+        var ref = storageRoot.child(path);
+        return ref.put(m.blob).then(function (snap) {
+          return snap.ref.getDownloadURL().then(function (url) {
+            return {
+              type: m.type,
+              url: url,
+              duration: m.duration || 0,
+              mime: (m.blob && m.blob.type) || "",
+              storagePath: path,
+              size: m.blob.size || 0,
+            };
+          });
+        });
+      })
+    );
+  }
+
   document.getElementById("report-form").addEventListener("submit", function (e) {
     e.preventDefault();
 
@@ -702,16 +754,23 @@
  
         setSubmitLoading(true, window.i18n ? window.i18n.t("btn_saving") : "Saving to database…");
 
-        return buildMediaForFirestore(mediaAttachments).then(function (mediaData) {
-          if (mediaData.some(function (x) { return x.tooLarge; })) {
-            toast(
-              "Some files were too large for the database and were not fully saved. Try shorter audio/video or fewer attachments.",
-              "warning",
-              8000
-            );
-          }
-
-          return db.collection("reports").add({
+        setSubmitLoading(true, "Uploading attachments…");
+        return uploadMediaToStorage(mediaAttachments)
+          .catch(function () {
+            // Fallback for projects without Firebase Storage rules/config.
+            return buildMediaForFirestore(mediaAttachments).then(function (fallbackData) {
+              if (fallbackData.some(function (x) { return x.tooLarge; })) {
+                toast(
+                  "Some files were too large for database fallback. Enable Firebase Storage to upload larger videos.",
+                  "warning",
+                  9000
+                );
+              }
+              return fallbackData;
+            });
+          })
+          .then(function (mediaData) {
+            return db.collection("reports").add({
             rawText: reportText,
             reporterName: reporterName,
             city: city,
