@@ -49,7 +49,7 @@
   const reportsDrawerClose = document.getElementById("reports-drawer-close");
   const reportsDrawerBackdrop = document.getElementById("reports-drawer-backdrop");
   const btnAllReportsDrawer = document.getElementById("btn-all-reports-drawer");
-  const btnRecentReportsDrawer = document.getElementById("btn-recent-reports-drawer");
+  const recentReportsList = document.getElementById("recent-reports-list");
 
   function urgencyNumber(reportOrScore) {
     const raw =
@@ -162,7 +162,6 @@
       reportsDrawerList.innerHTML = '<div class="reports-drawer-empty">' + esc(emptyMsg) + "</div>";
       return;
     }
-    const medal = ["\uD83E\uDD47", "\uD83E\uDD48", "\uD83E\uDD49"];
     reportsDrawerList.innerHTML = rows
       .map((r) => {
         const u = urgencyNumber(r);
@@ -201,6 +200,52 @@
       .join("");
   }
 
+  function renderRecentReportsList() {
+    if (!recentReportsList) return;
+    const recent = [...allReports]
+      .sort((a, b) => reportTimeMs(b) - reportTimeMs(a))
+      .slice(0, 3);
+    if (recent.length === 0) {
+      recentReportsList.innerHTML =
+        '<div class="reports-drawer-empty" style="padding:16px;text-align:center;font-size:12px;color:var(--text-muted)">No reports yet.</div>';
+      return;
+    }
+    recentReportsList.innerHTML = recent
+      .map((r) => {
+        const u = urgencyNumber(r);
+        const uc = urgencyColor(u);
+        const scoreLabel = Number.isFinite(u) ? u + "/10" : "\u2014";
+        const ts = formatReportTime(r);
+        return (
+          '<div class="recent-report-card">' +
+          '<div class="recent-report-card-top">' +
+          '<span class="recent-report-loc">' +
+          needIcon(r.needType) + " " + esc(r.location || "Unknown") +
+          "</span>" +
+          '<span class="recent-report-urgency" style="color:' + uc.fill + '">' +
+          scoreLabel +
+          "</span>" +
+          "</div>" +
+          '<div class="recent-report-meta">\uD83D\uDD50 ' + esc(ts) + "</div>" +
+          '<button type="button" class="recent-report-full-btn js-recent-full-report" data-report-id="' +
+          escAttr(r.id) +
+          '">\uD83D\uDCCB View Full Report</button>' +
+          "</div>"
+        );
+      })
+      .join("");
+
+    recentReportsList.querySelectorAll(".js-recent-full-report").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const id = btn.getAttribute("data-report-id");
+        if (id && typeof window.viewDetailedReport === "function") {
+          window.viewDetailedReport(id);
+        }
+      });
+    });
+  }
+
   function updateUI() {
     const high = allReports.filter((r) => matchesUrgencyBand(r, "high")).length;
     const med = allReports.filter((r) => matchesUrgencyBand(r, "medium")).length;
@@ -226,8 +271,8 @@
             const uc = urgencyColor(u);
             const uDisp = Number.isFinite(u) ? u : "\u2014";
             return (
-              `<div class="hotspot-item" onclick="window.panToReport('${escAttr(r.id)}')">` +
-              '<div class="hotspot-header">' +
+              `<div class="hotspot-item">` +
+              '<div class="hotspot-header" onclick="window.panToReport(\'' + escAttr(r.id) + '\')">' +
               `<span class="hotspot-rank">${medals[i] || "#" + (i + 1)}</span>` +
               `<div class="hotspot-title">${needIcon(r.needType)} ${esc(r.location)}</div>` +
               "</div>" +
@@ -240,13 +285,18 @@
               '<div class="hotspot-stat">Affected: ' +
               Number(r.populationAffected || 0).toLocaleString() +
               "</div>" +
-              "</div></div>"
+              "</div>" +
+              `<button type="button" class="recent-report-full-btn" style="margin-top:10px" onclick="window.viewDetailedReport('${escAttr(r.id)}')">` +
+              "\uD83D\uDCCB View Full Report" +
+              "</button>" +
+              "</div>"
             );
           })
           .join("");
       }
     }
 
+    renderRecentReportsList();
     applyFiltersAndList();
 
     if (reportsDrawer && reportsDrawer.classList.contains("open") && drawerSortMode) {
@@ -354,9 +404,6 @@
 
   if (btnAllReportsDrawer) {
     btnAllReportsDrawer.addEventListener("click", () => openReportsDrawer("urgency"));
-  }
-  if (btnRecentReportsDrawer) {
-    btnRecentReportsDrawer.addEventListener("click", () => openReportsDrawer("recent"));
   }
   if (reportsDrawerClose) {
     reportsDrawerClose.addEventListener("click", closeReportsDrawer);
