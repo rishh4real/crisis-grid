@@ -1,11 +1,10 @@
 /**
- * app.js — CrisisGrid Dispatch Dashboard (Refactored v1.2)
- * Consolidates all Firebase, Map, and UI logic into a single reactive stream.
+ * app.js — CrisisGrid Dispatch Dashboard
+ * Map filters, markers, full-report modal, all/recent reports drawer.
  */
 (function () {
   "use strict";
 
-  // ── 1. MAP INITIALIZATION ──────────────────────────────────────────────────
   const map = L.map("map", {
     center: [20.5937, 78.9629],
     zoom: 5,
@@ -14,53 +13,95 @@
 
   L.control.zoom({ position: "bottomright" }).addTo(map);
 
-  const getTileUrl = (theme) => 
-    theme === 'dark'
+  const getTileUrl = (theme) =>
+    theme === "dark"
       ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
       : "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png";
 
   const currentTheme = document.documentElement.getAttribute("data-theme") || "light";
   const mapLayer = L.tileLayer(getTileUrl(currentTheme), {
-    attribution: '&copy; OSM &copy; CARTO',
+    attribution: "&copy; OSM &copy; CARTO",
     subdomains: "abcd",
     maxZoom: 19,
   }).addTo(map);
 
-  window.addEventListener('themeChanged', (e) => mapLayer.setUrl(getTileUrl(e.detail)));
+  window.addEventListener("themeChanged", (e) => mapLayer.setUrl(getTileUrl(e.detail)));
 
-  // ── 2. SHARED STATE ────────────────────────────────────────────────────────
-  let allReports = []; // Master data list
-  const markers = {};   // Marker cache { docId: L.CircleMarker }
+  let allReports = [];
+  const markers = {};
   let currentFilter = "all";
+  let drawerSortMode = null;
 
-  // ── 3. UI REFERENCES ───────────────────────────────────────────────────────
   const sidebar = document.getElementById("sidebar");
   const sidebarBtn = document.getElementById("sidebar-toggle");
   const hotspotList = document.getElementById("hotspot-list");
   const reportListCount = document.getElementById("report-count");
-  const allReportsListEl = document.getElementById("all-reports-list");
   const statsHigh = document.getElementById("stats-high");
   const statsMed = document.getElementById("stats-med");
   const statsLow = document.getElementById("stats-low");
+  const lastUpdatedEl = document.getElementById("last-updated");
 
-  // Modal Refs
   const modal = document.getElementById("detail-modal");
   const modalClose = document.getElementById("modal-close");
-  // ── 4. HELPERS ─────────────────────────────────────────────────────────────
+
+  const reportsDrawer = document.getElementById("reports-drawer");
+  const reportsDrawerList = document.getElementById("reports-drawer-list");
+  const reportsDrawerClose = document.getElementById("reports-drawer-close");
+  const reportsDrawerBackdrop = document.getElementById("reports-drawer-backdrop");
+  const btnAllReportsDrawer = document.getElementById("btn-all-reports-drawer");
+  const btnRecentReportsDrawer = document.getElementById("btn-recent-reports-drawer");
+
+  function urgencyNumber(reportOrScore) {
+    const raw =
+      typeof reportOrScore === "object" && reportOrScore !== null
+        ? reportOrScore.urgencyScore
+        : reportOrScore;
+    const u = Number(raw);
+    return Number.isFinite(u) ? u : NaN;
+  }
+
+  /** Pin / UI colors: critical 8–10, moderate 4–7, low 1–3; else neutral. */
   function urgencyColor(score) {
-    if (score >= 8) return { fill: "#ef4444", glow: "rgba(239,68,68,0.4)" };
-    if (score >= 4) return { fill: "#f97316", glow: "rgba(249,115,22,0.4)" };
-    return { fill: "#22c55e", glow: "rgba(34,197,94,0.4)" };
+    const u = Number(score);
+    if (!Number.isFinite(u)) {
+      return { fill: "#94a3b8", glow: "rgba(148,163,184,0.35)" };
+    }
+    if (u >= 8 && u <= 10) return { fill: "#ef4444", glow: "rgba(239,68,68,0.4)" };
+    if (u >= 4 && u <= 7) return { fill: "#f97316", glow: "rgba(249,115,22,0.4)" };
+    if (u >= 1 && u <= 3) return { fill: "#22c55e", glow: "rgba(34,197,94,0.4)" };
+    return { fill: "#94a3b8", glow: "rgba(148,163,184,0.35)" };
+  }
+
+  function matchesUrgencyBand(r, band) {
+    const u = urgencyNumber(r);
+    if (!Number.isFinite(u)) return false;
+    if (band === "high") return u >= 8 && u <= 10;
+    if (band === "medium") return u >= 4 && u <= 7;
+    if (band === "low") return u >= 1 && u <= 3;
+    return false;
+  }
+
+  function reportMatchesMapFilter(r) {
+    if (currentFilter === "all") return true;
+    return matchesUrgencyBand(r, currentFilter);
   }
 
   function needIcon(type) {
-    const icons = { Food:"🍱", Water:"💧", Medical:"🏥", Shelter:"🏠", Evacuation:"🚁" };
-    return icons[type] || "📌";
+    const icons = {
+      Food: "\uD83C\uDF71",
+      Water: "\uD83D\uDCA7",
+      Medical: "\uD83C\uDFE5",
+      Shelter: "\uD83C\uDFE0",
+      Evacuation: "\uD83D\uDE81",
+    };
+    return icons[type] || "\uD83D\uDCCC";
   }
 
   function esc(str) {
     if (!str) return "";
-    return String(str).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"}[m]));
+    return String(str).replace(/[&<>"']/g, (m) =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[m])
+    );
   }
 
   function escAttr(str) {
@@ -68,131 +109,238 @@
     return String(str).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
   }
 
-  // ── 5. REACTIVE UI UPDATES ─────────────────────────────────────────────────
-  
-  function updateUI() {
-    // A. Update Stats
-    const high = allReports.filter(r => r.urgencyScore >= 8).length;
-    const med = allReports.filter(r => r.urgencyScore >= 4 && r.urgencyScore < 8).length;
-    const low = allReports.filter(r => r.urgencyScore < 4).length;
-    
-    if(statsHigh) statsHigh.textContent = high;
-    if(statsMed) statsMed.textContent = med;
-    if(statsLow) statsLow.textContent = low;
-    if(reportListCount) reportListCount.textContent = allReports.length;
+  function reportTimeMs(r) {
+    if (!r || !r.timestamp) return 0;
+    if (typeof r.timestamp.toDate === "function") return r.timestamp.toDate().getTime();
+    const d = new Date(r.timestamp);
+    return isNaN(d.getTime()) ? 0 : d.getTime();
+  }
 
-    // B. Update Top Hotspots (Top 3 by urgency)
-    const sorted = [...allReports].sort((a,b) => b.urgencyScore - a.urgencyScore).slice(0, 3);
+  function formatReportTime(r) {
+    if (!r || !r.timestamp) return "\u2014";
+    if (typeof r.timestamp.toDate === "function") return r.timestamp.toDate().toLocaleString();
+    return new Date(r.timestamp).toLocaleString();
+  }
+
+  function syncDrawerTitle() {
+    const titleEl = document.getElementById("reports-drawer-title");
+    if (!titleEl || !window.i18n) return;
+    if (drawerSortMode === "recent") titleEl.textContent = window.i18n.t("recent_reports_title");
+    else titleEl.textContent = window.i18n.t("all_reports_title");
+  }
+
+  function openReportsDrawer(mode) {
+    if (!reportsDrawer) return;
+    drawerSortMode = mode;
+    reportsDrawer.classList.add("open");
+    reportsDrawer.setAttribute("aria-hidden", "false");
+    syncDrawerTitle();
+    renderReportsDrawerList();
+    if (sidebar && window.innerWidth <= 768) {
+      sidebar.classList.remove("sidebar-open");
+      if (sidebarBtn) sidebarBtn.textContent = "\u2630";
+    }
+  }
+
+  function closeReportsDrawer() {
+    if (!reportsDrawer) return;
+    drawerSortMode = null;
+    reportsDrawer.classList.remove("open");
+    reportsDrawer.setAttribute("aria-hidden", "true");
+  }
+
+  function renderReportsDrawerList() {
+    if (!reportsDrawerList || !drawerSortMode) return;
+    const emptyMsg = window.i18n ? window.i18n.t("drawer_empty") : "No reports yet.";
+    let rows = [...allReports];
+    if (drawerSortMode === "urgency") {
+      rows.sort((a, b) => urgencyNumber(b) - urgencyNumber(a));
+    } else {
+      rows.sort((a, b) => reportTimeMs(b) - reportTimeMs(a));
+    }
+    if (rows.length === 0) {
+      reportsDrawerList.innerHTML = '<div class="reports-drawer-empty">' + esc(emptyMsg) + "</div>";
+      return;
+    }
+    reportsDrawerList.innerHTML = rows
+      .map((r) => {
+        const u = urgencyNumber(r);
+        const uc = urgencyColor(u);
+        const scoreLabel = Number.isFinite(u) ? String(u) : "\u2014";
+        const ts = formatReportTime(r);
+        return (
+          '<button type="button" class="report-drawer-card" data-report-id="' +
+          escAttr(r.id) +
+          '">' +
+          '<div class="report-drawer-card-top">' +
+          '<span class="report-drawer-loc">' +
+          needIcon(r.needType) +
+          " " +
+          esc(r.location || "Unknown") +
+          "</span>" +
+          '<span class="report-drawer-urgency" style="color:' +
+          uc.fill +
+          '">' +
+          scoreLabel +
+          "</span>" +
+          "</div>" +
+          '<div class="report-drawer-meta">' +
+          "<span>\uD83D\uDC65 " +
+          Number(r.populationAffected || 0).toLocaleString() +
+          "</span>" +
+          "<span>\uD83C\uDFE2 " +
+          esc(r.ngoName || "Field Staff") +
+          "</span>" +
+          "<span>\uD83D\uDD50 " +
+          esc(ts) +
+          "</span>" +
+          "</div></button>"
+        );
+      })
+      .join("");
+  }
+
+  function updateUI() {
+    const high = allReports.filter((r) => matchesUrgencyBand(r, "high")).length;
+    const med = allReports.filter((r) => matchesUrgencyBand(r, "medium")).length;
+    const low = allReports.filter((r) => matchesUrgencyBand(r, "low")).length;
+
+    if (statsHigh) statsHigh.textContent = high;
+    if (statsMed) statsMed.textContent = med;
+    if (statsLow) statsLow.textContent = low;
+    if (reportListCount) reportListCount.textContent = allReports.length;
+    if (lastUpdatedEl) lastUpdatedEl.textContent = new Date().toLocaleString();
+
+    const sorted = [...allReports]
+      .sort((a, b) => urgencyNumber(b) - urgencyNumber(a))
+      .slice(0, 3);
+    const medals = ["\uD83E\uDD47", "\uD83E\uDD48", "\uD83E\uDD49"];
     if (hotspotList) {
       if (sorted.length === 0) {
         hotspotList.innerHTML = '<div class="hotspot-empty">Awaiting field data...</div>';
       } else {
-        hotspotList.innerHTML = sorted.map((r, i) => `
-          <div class="hotspot-item" onclick="window.panToReport('${r.id}')">
-            <div class="hotspot-header">
-              <span class="hotspot-rank">${["🥇","🥈","🥉"][i] || "#"+(i+1)}</span>
-              <div class="hotspot-title">${needIcon(r.needType)} ${esc(r.location)}</div>
-            </div>
-            <div class="hotspot-meta">
-              <div class="hotspot-stat">Urgency: <span style="color:${urgencyColor(r.urgencyScore).fill}">${r.urgencyScore}/10</span></div>
-              <div class="hotspot-stat">Affected: ${Number(r.populationAffected).toLocaleString()}</div>
-            </div>
-          </div>
-        `).join("");
+        hotspotList.innerHTML = sorted
+          .map((r, i) => {
+            const u = urgencyNumber(r);
+            const uc = urgencyColor(u);
+            const uDisp = Number.isFinite(u) ? u : "\u2014";
+            return (
+              `<div class="hotspot-item" onclick="window.panToReport('${escAttr(r.id)}')">` +
+              '<div class="hotspot-header">' +
+              `<span class="hotspot-rank">${medals[i] || "#" + (i + 1)}</span>` +
+              `<div class="hotspot-title">${needIcon(r.needType)} ${esc(r.location)}</div>` +
+              "</div>" +
+              '<div class="hotspot-meta">' +
+              '<div class="hotspot-stat">Urgency: <span style="color:' +
+              uc.fill +
+              '">' +
+              uDisp +
+              "/10</span></div>" +
+              '<div class="hotspot-stat">Affected: ' +
+              Number(r.populationAffected || 0).toLocaleString() +
+              "</div>" +
+              "</div></div>"
+            );
+          })
+          .join("");
       }
     }
 
-    // C. Update All Reports List (Sidebar) & Marker Visibility
     applyFiltersAndList();
+
+    if (reportsDrawer && reportsDrawer.classList.contains("open") && drawerSortMode) {
+      syncDrawerTitle();
+      renderReportsDrawerList();
+    }
   }
 
   function applyFiltersAndList() {
-    // Filter logic
-    const filtered = allReports.filter(r => {
-      if (currentFilter === "all") return true;
-      if (currentFilter === "high") return r.urgencyScore >= 8;
-      if (currentFilter === "medium") return r.urgencyScore >= 4 && r.urgencyScore < 8;
-      if (currentFilter === "low") return r.urgencyScore < 4;
-      return true;
-    });
+    const filtered = allReports.filter((r) => reportMatchesMapFilter(r));
 
-    // Update Marker Visibility
-    allReports.forEach(r => {
+    allReports.forEach((r) => {
       const marker = markers[r.id];
       if (!marker) return;
-      const isVisible = filtered.some(fr => fr.id === r.id);
-      if (isVisible) { if (!map.hasLayer(marker)) marker.addTo(map); }
-      else { if (map.hasLayer(marker)) marker.remove(); }
-    });
-
-    // Update Sidebar List
-    if (allReportsListEl) {
-      if (filtered.length === 0) {
-        allReportsListEl.innerHTML = '<div style="padding:20px; text-align:center; color:var(--text-muted); font-size:12px;">No matching reports.</div>';
-      } else {
-        allReportsListEl.innerHTML = filtered.map(r => `
-          <div class="report-list-item" onclick="window.panToReport('${r.id}')">
-            <div class="report-list-header">
-              <span class="report-list-loc">${needIcon(r.needType)} ${esc(r.location)}</span>
-              <span style="font-weight:800; color:${urgencyColor(r.urgencyScore).fill}">${r.urgencyScore}</span>
-            </div>
-            <div class="report-list-meta">
-              <span>👥 ${Number(r.populationAffected).toLocaleString()}</span>
-              <span>🏢 ${esc(r.ngoName || "Field Staff")}</span>
-            </div>
-          </div>
-        `).join("");
+      const isVisible = filtered.some((fr) => fr.id === r.id);
+      if (isVisible) {
+        if (!map.hasLayer(marker)) marker.addTo(map);
+      } else if (map.hasLayer(marker)) {
+        marker.remove();
       }
-    }
+    });
   }
 
-  // ── 6. MARKER MANAGEMENT ───────────────────────────────────────────────────
   function upsertMarker(report) {
     if (report.lat == null || report.lng == null) return;
-    const colors = urgencyColor(report.urgencyScore);
-    
+    const u = urgencyNumber(report);
+    const colors = urgencyColor(u);
+
     if (markers[report.id]) markers[report.id].remove();
 
+    const radiusBase = Number.isFinite(u) ? u : 5;
     const circle = L.circleMarker([report.lat, report.lng], {
-      radius: Math.max(8, Math.min(22, report.urgencyScore * 2)),
-      fillColor: colors.fill, color: colors.fill, fillOpacity: 0.8, weight: 2
+      radius: Math.max(8, Math.min(22, radiusBase * 2)),
+      fillColor: colors.fill,
+      color: colors.fill,
+      fillOpacity: 0.8,
+      weight: 2,
     });
 
-    const ts = report.timestamp ? (report.timestamp.toDate ? report.timestamp.toDate().toLocaleString() : new Date(report.timestamp).toLocaleString()) : "—";
+    const ts = report.timestamp
+      ? typeof report.timestamp.toDate === "function"
+        ? report.timestamp.toDate().toLocaleString()
+        : new Date(report.timestamp).toLocaleString()
+      : "\u2014";
+    const uDisp = Number.isFinite(u) ? u : "\u2014";
 
-    circle.bindPopup(`
+    circle.bindPopup(
+      `
       <div class="popup-card">
         <div class="popup-title">${needIcon(report.needType)} ${esc(report.location)}</div>
         <div class="popup-meta">
-          <div class="popup-row">Urgency: <span style="color:${colors.fill}">${report.urgencyScore}/10</span></div>
-          <div class="popup-row">Affected: ${Number(report.populationAffected).toLocaleString()}</div>
+          <div class="popup-row">Urgency: <span style="color:${colors.fill}">${uDisp}/10</span></div>
+          <div class="popup-row">Affected: ${Number(report.populationAffected || 0).toLocaleString()}</div>
           <div class="popup-row">Reporter: ${esc(report.reporterName || "Anonymous")}</div>
         </div>
-        <button class="btn btn-primary btn-full popup-btn" style="margin-top:10px; font-size:11px; padding:6px;" onclick="window.viewDetailedReport('${report.id}')">
+        <button type="button" class="btn btn-primary btn-full popup-btn js-popup-full-report" data-report-id="${escAttr(
+          report.id
+        )}" style="margin-top:10px; font-size:11px; padding:6px;">
           View Full Report
         </button>
-        <div class="popup-ngo" style="margin-top:8px; font-size:10px; color:#64748b">🕐 ${ts}</div>
+        <div class="popup-ngo" style="margin-top:8px; font-size:10px; color:#64748b">\uD83D\uDD50 ${ts}</div>
       </div>
-    `, { maxWidth: 280 });
+    `,
+      { maxWidth: 280 }
+    );
+
+    circle.on("popupopen", () => {
+      const pu = circle.getPopup();
+      const wrap = pu && pu.getElement ? pu.getElement() : null;
+      if (!wrap) return;
+      const btn = wrap.querySelector(".js-popup-full-report");
+      if (!btn) return;
+      const rid = report.id;
+      btn.onclick = function (ev) {
+        if (ev) {
+          ev.preventDefault();
+          ev.stopPropagation();
+        }
+        if (typeof window.viewDetailedReport === "function") window.viewDetailedReport(rid);
+      };
+    });
 
     markers[report.id] = circle;
-    // Note: addTo(map) depends on current filter, handled in applyFiltersAndList()
   }
 
-  // ── 7. INTERACTION LOGIC ───────────────────────────────────────────────────
-  
-  // Sidebar Toggle
   if (sidebarBtn) {
     sidebarBtn.addEventListener("click", () => {
       sidebar.classList.toggle("sidebar-open");
-      sidebarBtn.textContent = sidebar.classList.contains("sidebar-open") ? "✕" : "☰";
+      sidebarBtn.textContent = sidebar.classList.contains("sidebar-open") ? "\u2715" : "\u2630";
     });
   }
 
-  // Filtering Buttons (matches .filter-strip in dashboard.html)
-  document.querySelectorAll(".filter-strip .filter-btn").forEach(btn => {
+  document.querySelectorAll(".filter-strip .filter-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
-      document.querySelectorAll(".filter-strip .filter-btn").forEach(b => {
+      document.querySelectorAll(".filter-strip .filter-btn").forEach((b) => {
         b.classList.remove("active");
         b.setAttribute("aria-pressed", "false");
       });
@@ -203,9 +351,43 @@
     });
   });
 
-  // Global Actions
+  if (btnAllReportsDrawer) {
+    btnAllReportsDrawer.addEventListener("click", () => openReportsDrawer("urgency"));
+  }
+  if (btnRecentReportsDrawer) {
+    btnRecentReportsDrawer.addEventListener("click", () => openReportsDrawer("recent"));
+  }
+  if (reportsDrawerClose) {
+    reportsDrawerClose.addEventListener("click", closeReportsDrawer);
+  }
+  if (reportsDrawerBackdrop) {
+    reportsDrawerBackdrop.addEventListener("click", closeReportsDrawer);
+  }
+  if (reportsDrawerList) {
+    reportsDrawerList.addEventListener("click", (e) => {
+      const card = e.target.closest("[data-report-id]");
+      if (!card) return;
+      const id = card.getAttribute("data-report-id");
+      if (id) window.panToReport(id);
+    });
+  }
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && reportsDrawer && reportsDrawer.classList.contains("open")) {
+      closeReportsDrawer();
+    }
+  });
+
+  window.addEventListener("languageChanged", () => {
+    if (reportsDrawer && reportsDrawer.classList.contains("open") && drawerSortMode) {
+      syncDrawerTitle();
+      renderReportsDrawerList();
+    }
+  });
+
   window.panToReport = (id) => {
-    const report = allReports.find(r => r.id === id);
+    if (reportsDrawer && reportsDrawer.classList.contains("open")) closeReportsDrawer();
+    const report = allReports.find((r) => r.id === id);
     if (!report) return;
     if (report.lat != null && report.lng != null) {
       map.flyTo([report.lat, report.lng], 12);
@@ -213,112 +395,127 @@
     }
     if (window.innerWidth <= 768) {
       sidebar.classList.remove("sidebar-open");
-      if (sidebarBtn) sidebarBtn.textContent = "☰";
+      if (sidebarBtn) sidebarBtn.textContent = "\u2630";
     }
   };
 
   window.viewDetailedReport = (id) => {
-    const report = allReports.find(r => r.id === id);
-    if (!report || !modal) return;
-
-    const setText = (elId, val) => {
-      const el = document.getElementById(elId);
-      if (el) el.textContent = val != null && val !== "" ? String(val) : "—";
-    };
-
-    setText("m-reporter", report.reporterName || "Anonymous");
-    setText("m-ngo", report.ngoName);
-    setText("m-city", report.city || report.reporterCity);
-    setText("m-location", report.location);
-    setText("m-state", report.state);
-    setText("m-country", report.country);
-    setText("m-need", report.needType);
-    setText("m-urgency", report.urgencyScore != null ? report.urgencyScore + " / 10" : null);
-    setText(
-      "m-pop",
-      report.populationAffected != null ? Number(report.populationAffected).toLocaleString() : null
-    );
-
-    const tsEl = document.getElementById("m-time");
-    if (tsEl) {
-      tsEl.textContent = report.timestamp
-        ? report.timestamp.toDate
-          ? report.timestamp.toDate().toLocaleString()
-          : new Date(report.timestamp).toLocaleString()
-        : "—";
+    const report = allReports.find((r) => r.id === id);
+    if (!report) {
+      console.warn("[CrisisGrid] viewDetailedReport: report not found:", id);
+      return;
     }
-
-    const textEl = document.getElementById("m-text");
-    if (textEl) textEl.textContent = report.rawText || "No text provided.";
-
-    const mediaSection = document.getElementById("m-media-section");
-    const mediaGrid = document.getElementById("m-media-grid");
-    if (mediaSection && mediaGrid) {
-      const mediaArr = Array.isArray(report.media) ? report.media : [];
-      if (mediaArr.length === 0) {
-        mediaSection.style.display = "none";
-        mediaGrid.innerHTML = "";
-      } else {
-        mediaSection.style.display = "block";
-        const blocks = mediaArr.map((m, idx) => {
-          if (m && m.data && m.type === "photo") {
-            return (
-              '<div class="modal-media-item"><img src="' +
-              escAttr(m.data) +
-              '" alt="Photo ' +
-              (idx + 1) +
-              '" /></div>'
-            );
-          }
-          if (m && m.data && m.type === "video") {
-            return (
-              '<div class="modal-media-item"><video controls playsinline src="' +
-              escAttr(m.data) +
-              '"></video></div>'
-            );
-          }
-          if (m && m.data && m.type === "audio") {
-            const dur =
-              m.duration && Number(m.duration) > 0
-                ? '<span class="modal-media-meta">' + esc(String(m.duration)) + "s</span>"
-                : "";
-            return (
-              '<div class="modal-media-item modal-media-audio"><audio controls src="' +
-              escAttr(m.data) +
-              '"></audio>' +
-              dur +
-              "</div>"
-            );
-          }
-          if (m && m.tooLarge) {
-            return (
-              '<div class="modal-media-note">One ' +
-              esc(m.type || "file") +
-              " attachment was too large to store in the database. Try a shorter recording or fewer attachments.</div>"
-            );
-          }
-          if (m && (m.skipped || !m.data)) {
-            return (
-              '<div class="modal-media-note">Attachment (' +
-              esc(m.type || "unknown") +
-              ") — no file data saved (older report or upload issue).</div>"
-            );
-          }
-          return "";
-        });
-        mediaGrid.innerHTML =
-          blocks.filter(Boolean).join("") ||
-          '<div class="modal-media-note">No previewable attachments.</div>';
-      }
+    if (!modal) {
+      console.error("[CrisisGrid] detail modal missing from DOM (#detail-modal)");
+      return;
     }
 
     try {
-      map.closePopup();
-    } catch (e) {
-      /* ignore */
-    }
+      const setText = (elId, val) => {
+        const el = document.getElementById(elId);
+        if (el) el.textContent = val != null && val !== "" ? String(val) : "\u2014";
+      };
 
-    modal.classList.add("active");
+      setText("m-reporter", report.reporterName || "Anonymous");
+      setText("m-ngo", report.ngoName);
+      setText("m-city", report.city || report.reporterCity);
+      setText("m-location", report.location);
+      setText("m-state", report.state);
+      setText("m-country", report.country);
+      setText("m-need", report.needType);
+      setText("m-urgency", report.urgencyScore != null ? report.urgencyScore + " / 10" : null);
+      setText(
+        "m-pop",
+        report.populationAffected != null ? Number(report.populationAffected).toLocaleString() : null
+      );
+
+      const tsEl = document.getElementById("m-time");
+      if (tsEl) {
+        let ts = "\u2014";
+        if (report.timestamp) {
+          if (typeof report.timestamp.toDate === "function") {
+            ts = report.timestamp.toDate().toLocaleString();
+          } else {
+            ts = new Date(report.timestamp).toLocaleString();
+          }
+        }
+        tsEl.textContent = ts;
+      }
+
+      const textEl = document.getElementById("m-text");
+      if (textEl) textEl.textContent = report.rawText || "No text provided.";
+
+      const mediaSection = document.getElementById("m-media-section");
+      const mediaGrid = document.getElementById("m-media-grid");
+      if (mediaSection && mediaGrid) {
+        const mediaArr = Array.isArray(report.media) ? report.media : [];
+        if (mediaArr.length === 0) {
+          mediaSection.style.display = "none";
+          mediaGrid.innerHTML = "";
+        } else {
+          mediaSection.style.display = "block";
+          const blocks = mediaArr.map((m, idx) => {
+            if (m && m.data && m.type === "photo") {
+              return (
+                '<div class="modal-media-item"><img src="' +
+                escAttr(m.data) +
+                '" alt="Photo ' +
+                (idx + 1) +
+                '" /></div>'
+              );
+            }
+            if (m && m.data && m.type === "video") {
+              return (
+                '<div class="modal-media-item"><video controls playsinline src="' +
+                escAttr(m.data) +
+                '"></video></div>'
+              );
+            }
+            if (m && m.data && m.type === "audio") {
+              const dur =
+                m.duration && Number(m.duration) > 0
+                  ? '<span class="modal-media-meta">' + esc(String(m.duration)) + "s</span>"
+                  : "";
+              return (
+                '<div class="modal-media-item modal-media-audio"><audio controls src="' +
+                escAttr(m.data) +
+                '"></audio>' +
+                dur +
+                "</div>"
+              );
+            }
+            if (m && m.tooLarge) {
+              return (
+                '<div class="modal-media-note">One ' +
+                esc(m.type || "file") +
+                " attachment was too large to store in the database. Try a shorter recording or fewer attachments.</div>"
+              );
+            }
+            if (m && (m.skipped || !m.data)) {
+              return (
+                '<div class="modal-media-note">Attachment (' +
+                esc(m.type || "unknown") +
+                ") — no file data saved (older report or upload issue).</div>"
+              );
+            }
+            return "";
+          });
+          mediaGrid.innerHTML =
+            blocks.filter(Boolean).join("") ||
+            '<div class="modal-media-note">No previewable attachments.</div>';
+        }
+      }
+
+      try {
+        if (map && typeof map.closePopup === "function") map.closePopup();
+      } catch (e) {
+        /* ignore */
+      }
+
+      modal.classList.add("active");
+    } catch (err) {
+      console.error("[CrisisGrid] viewDetailedReport error:", err);
+    }
   };
 
   if (modalClose) {
@@ -335,13 +532,11 @@
     }
   }
 
-  // Recenter
   const recenterBtn = document.getElementById("recenter-btn");
   if (recenterBtn) {
     recenterBtn.addEventListener("click", () => map.flyTo([20.5937, 78.9629], 5));
   }
 
-  // ── 8. FIREBASE CONNECTION ────────────────────────────────────────────────
   function connect() {
     if (typeof firebase === "undefined") return;
     const cfg = window.__ENV && window.__ENV.FIREBASE_CONFIG;
@@ -350,13 +545,14 @@
     if (!firebase.apps.length) firebase.initializeApp(cfg);
     const db = firebase.firestore();
 
-    db.collection("reports").orderBy("timestamp", "desc").onSnapshot(snap => {
-      allReports = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      allReports.forEach(upsertMarker);
-      updateUI();
-    });
+    db.collection("reports")
+      .orderBy("timestamp", "desc")
+      .onSnapshot((snap) => {
+        allReports = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+        allReports.forEach(upsertMarker);
+        updateUI();
+      });
   }
 
   connect();
-
 })();
