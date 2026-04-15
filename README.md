@@ -29,6 +29,7 @@ Into a structured, mapped, actionable report in seconds — automatically.
 - 🔴 **Real-time Updates** — Firebase Firestore syncs new reports instantly across all devices
 - 📱 **Mobile Responsive** — Designed for field workers on phone browsers
 - 🏛️ **Multi-NGO Support** — Multiple organizations can submit to the same shared map
+- 🎥 **Video-support** — will be deployed soon
 
 ---
 
@@ -45,3 +46,26 @@ Into a structured, mapped, actionable report in seconds — automatically.
 ---
 
 ## 🏗️ Project Structure
+
+crisis-grid/
+├── index.html          # Landing page
+├── dashboard.html      # Live map dashboard
+├── submit.html         # Field report submission form
+├── style.css           # Global styles
+├── app.js              # Map logic + Firestore real-time listener
+├── submit.js           # Form + voice upload handler
+├── gemini.js           # AI extraction (Groq LLaMA)
+├── groq.js             # Whisper voice transcription
+├── firebase.js         # Firebase initialization
+└── env-config.js       # API keys (not committed)
+
+---
+
+
+## 💎 Team -- commitNpray
+Commit N Pray is a team driven by speed, creativity, and fearless execution. We build fast, adapt instantly, and turn chaos into working solutions. We don’t wait for perfection—we commit, iterate, and sometimes… pray.
+
+## 👥 Team Members
+1. Shaurya Sharma -- Teach lead + Team lead [ rishhhsharmaaa@gmail.com]
+2. Aatifa Aftab -- Quality Assurance + Prototype Designer [atikaa@student.iul.ac.in]
+3. Mayank choudhary -- Quality Assurance + Support Developer [mayanknst2028@gmail.com]
