@@ -605,6 +605,57 @@
   //  FORM SUBMISSION
   // ══════════════════════════════════════════════════════════════════════════
 
+  /** Encode attachments for Firestore (base64 data URLs; capped to stay near 1 MiB doc limit). */
+  function buildMediaForFirestore(items) {
+    return Promise.all(
+      items.map(function (m) {
+        if (m.type === "photo" && m.dataUrl && m.dataUrl.indexOf("data:") === 0) {
+          var cap = 320000;
+          var data = m.dataUrl.length > cap ? m.dataUrl.substring(0, cap) : m.dataUrl;
+          return Promise.resolve({ type: "photo", data: data });
+        }
+        if (!m.blob) {
+          return Promise.resolve({
+            type: m.type,
+            duration: m.duration || 0,
+            skipped: true,
+          });
+        }
+        return new Promise(function (resolve) {
+          var reader = new FileReader();
+          reader.onload = function () {
+            var url = reader.result;
+            var maxLen =
+              m.type === "audio" ? 260000 : m.type === "video" ? 340000 : 320000;
+            if (!url || String(url).length > maxLen) {
+              resolve({
+                type: m.type,
+                duration: m.duration || 0,
+                tooLarge: true,
+                mime: (m.blob && m.blob.type) || "",
+              });
+            } else {
+              resolve({
+                type: m.type,
+                data: url,
+                duration: m.duration || 0,
+                mime: (m.blob && m.blob.type) || "",
+              });
+            }
+          };
+          reader.onerror = function () {
+            resolve({ type: m.type, duration: m.duration || 0, skipped: true });
+          };
+          try {
+            reader.readAsDataURL(m.blob);
+          } catch (err) {
+            resolve({ type: m.type, duration: m.duration || 0, skipped: true });
+          }
+        });
+      })
+    );
+  }
+
   document.getElementById("report-form").addEventListener("submit", function (e) {
     e.preventDefault();
 
@@ -650,34 +701,38 @@
         }
  
         setSubmitLoading(true, window.i18n ? window.i18n.t("btn_saving") : "Saving to database…");
- 
-        // Prepare media data (compressed photos as base64, metadata for video/audio)
-        var mediaData = mediaAttachments.map(function (m) {
-          if (m.type === "photo" && m.dataUrl.startsWith("data:")) {
-            return { type: "photo", data: m.dataUrl.substring(0, 500000) }; // cap at ~375KB
+
+        return buildMediaForFirestore(mediaAttachments).then(function (mediaData) {
+          if (mediaData.some(function (x) { return x.tooLarge; })) {
+            toast(
+              "Some files were too large for the database and were not fully saved. Try shorter audio/video or fewer attachments.",
+              "warning",
+              8000
+            );
           }
-          return { type: m.type, duration: m.duration || 0, size: m.blob ? m.blob.size : 0 };
-        });
- 
-        return db.collection("reports").add({
-          rawText: reportText,
-          reporterName: reporterName,
-          state: state,
-          country: country,
-          ngoName: ngoName,
-          location: result.extracted.location,
-          needType: result.extracted.needType,
-          urgencyScore: result.extracted.urgencyScore,
-          populationAffected: result.extracted.populationAffected,
-          lat: result.lat,
-          lng: result.lng,
-          mediaCount: mediaAttachments.length,
-          media: mediaData,
-          timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+
+          return db.collection("reports").add({
+            rawText: reportText,
+            reporterName: reporterName,
+            city: city,
+            state: state,
+            country: country,
+            ngoName: ngoName,
+            location: result.extracted.location,
+            needType: result.extracted.needType,
+            urgencyScore: result.extracted.urgencyScore,
+            populationAffected: result.extracted.populationAffected,
+            lat: result.lat,
+            lng: result.lng,
+            mediaCount: mediaAttachments.length,
+            media: mediaData,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+          });
         }).then(function () {
           toast((window.i18n ? window.i18n.t("toast_success") : "✅ Report saved with ") + mediaAttachments.length + " attachment(s)!", "success");
           reportTextarea.value = "";
           document.getElementById("reporter-name") && (document.getElementById("reporter-name").value = "");
+          document.getElementById("reporter-city") && (document.getElementById("reporter-city").value = "");
           document.getElementById("reporter-state") && (document.getElementById("reporter-state").value = "");
           ngoNameInput.value = "";
           charCounter.textContent = "0 / 1000";

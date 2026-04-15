@@ -3,9 +3,9 @@
 <head>
   <!-- ENV must load before any module -->
   <script src="env-config.js"></script>
-  <script src="theme.js?v=1.1"></script>
-  <script src="i18n.js?v=1.1"></script>
-  <script src="settings.js?v=1.1"></script>
+  <script src="theme.js?v=1.2"></script>
+  <script src="i18n.js?v=1.2"></script>
+  <script src="settings.js?v=1.2"></script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="description" content="CrisisGrid — Real-time humanitarian crisis map. Ground truth, delivered to those who act." />
@@ -21,7 +21,7 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <!-- Styles -->
-  <link rel="stylesheet" href="style.css?v=1.1" />
+  <link rel="stylesheet" href="style.css?v=1.2" />
 
   <style>
     /* ── Dashboard layout ─────────────────────────────────────────── */
@@ -59,14 +59,14 @@
       border-radius: 99px;
       font-size: 12px; font-weight: 600;
       border: 1px solid var(--border-bright);
-      background: rgba(8,12,20,0.85);
+      background: rgba(255,255,255,0.94);
       backdrop-filter: blur(10px);
-      color: #cbd5e1;
+      color: var(--text-label);
       cursor: pointer;
       transition: var(--transition);
       display: flex; align-items: center; gap: 5px;
     }
-    .filter-btn:hover { color: #fff; border-color: rgba(255,255,255,0.2); }
+    .filter-btn:hover { color: var(--text-primary); border-color: var(--accent); }
     .filter-btn.active { color: #fff; background: var(--accent); border-color: var(--accent); }
     .filter-btn .dot {
       width: 8px; height: 8px; border-radius: 50%;
@@ -108,6 +108,33 @@
     .modal-text-block { background: var(--bg-primary); padding: 16px; border-radius: var(--radius-md); border: 1px solid var(--border); font-size: 14px; line-height: 1.6; font-style: italic; }
     .modal-audio { margin-top: 10px; width: 100%; }
 
+    .modal-media-section { margin-top: 8px; }
+    .modal-media-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 14px;
+      margin-top: 10px;
+    }
+    .modal-media-item img,
+    .modal-media-item video {
+      width: 100%;
+      max-height: 280px;
+      object-fit: contain;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border);
+      background: var(--bg-primary);
+    }
+    .modal-media-item audio { width: 100%; margin-top: 4px; }
+    .modal-media-meta { font-size: 11px; color: var(--text-muted); display: block; margin-top: 4px; }
+    .modal-media-note {
+      font-size: 13px;
+      color: var(--text-muted);
+      padding: 12px;
+      background: var(--bg-primary);
+      border-radius: var(--radius-md);
+      border: 1px dashed var(--border-bright);
+    }
+
     /* ── Sidebar Report List ─────────────────────────────────────── */
     .report-list-item {
       padding: 12px; border-radius: var(--radius-md); border: 1px solid var(--border);
@@ -143,7 +170,7 @@
       width: 34px; height: 34px;
       border-radius: var(--radius-sm);
       border: 1px solid var(--border-bright);
-      background: rgba(8,12,20,0.85);
+      background: rgba(255,255,255,0.94);
       backdrop-filter: blur(10px);
       color: var(--text-label);
       cursor: pointer; font-size: 15px;
@@ -226,8 +253,8 @@
       transition: var(--transition);
     }
     .hotspot-item:hover {
-      border-color: var(--border-bright);
-      background: rgba(255,255,255,0.04);
+      border-color: var(--accent);
+      background: var(--bg-primary);
       transform: translateX(-2px);
     }
     .hotspot-item:focus {
@@ -286,7 +313,7 @@
     /* ── Navbar count pill ────────────────────────────────────────── */
     .count-pill {
       display: inline-flex; align-items: center; gap: 5px;
-      background: rgba(255,255,255,0.06);
+      background: var(--bg-primary);
       border: 1px solid var(--border-bright);
       border-radius: 99px;
       padding: 4px 12px;
@@ -448,11 +475,73 @@
   <!-- Toast container -->
   <div id="toast-container" role="status" aria-live="polite"></div>
 
+  <!-- Full report detail modal -->
+  <div id="detail-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-title-text">
+    <div class="modal-container">
+      <div class="modal-header">
+        <h2 id="modal-title-text" class="modal-title" data-i18n="modal_details_title">Detailed Crisis Report</h2>
+        <button type="button" id="modal-close" class="modal-close" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-grid">
+          <div class="modal-field">
+            <span class="modal-field-label" data-i18n="modal_reporter">Reporter</span>
+            <span id="m-reporter" class="modal-field-value">—</span>
+          </div>
+          <div class="modal-field">
+            <span class="modal-field-label">Organisation</span>
+            <span id="m-ngo" class="modal-field-value">—</span>
+          </div>
+          <div class="modal-field">
+            <span class="modal-field-label">City</span>
+            <span id="m-city" class="modal-field-value">—</span>
+          </div>
+          <div class="modal-field">
+            <span class="modal-field-label">Location (extracted)</span>
+            <span id="m-location" class="modal-field-value">—</span>
+          </div>
+          <div class="modal-field">
+            <span class="modal-field-label">State</span>
+            <span id="m-state" class="modal-field-value">—</span>
+          </div>
+          <div class="modal-field">
+            <span class="modal-field-label">Country</span>
+            <span id="m-country" class="modal-field-value">—</span>
+          </div>
+          <div class="modal-field">
+            <span class="modal-field-label">Need type</span>
+            <span id="m-need" class="modal-field-value">—</span>
+          </div>
+          <div class="modal-field">
+            <span class="modal-field-label">Urgency</span>
+            <span id="m-urgency" class="modal-field-value">—</span>
+          </div>
+          <div class="modal-field">
+            <span class="modal-field-label">People affected</span>
+            <span id="m-pop" class="modal-field-value">—</span>
+          </div>
+          <div class="modal-field">
+            <span class="modal-field-label">Submitted</span>
+            <span id="m-time" class="modal-field-value">—</span>
+          </div>
+        </div>
+        <div class="modal-field">
+          <span class="modal-field-label" data-i18n="modal_original_text">Original report text</span>
+          <div id="m-text" class="modal-text-block"></div>
+        </div>
+        <div id="m-media-section" class="modal-media-section" style="display:none">
+          <span class="modal-field-label">Attachments</span>
+          <div id="m-media-grid" class="modal-media-grid"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Firebase SDK (compat mode — works without build step) -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 
   <!-- App logic -->
-  <script src="app.js"></script>
+  <script src="app.js?v=1.2"></script>
 </body>
 </html>
