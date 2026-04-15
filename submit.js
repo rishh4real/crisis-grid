@@ -60,6 +60,19 @@
   }
 
   // ── Groq API extraction ───────────────────────────────────────────────────
+  function deriveHelpEstimate(needType, populationAffected, urgencyScore) {
+    var pop = Math.max(0, parseInt(populationAffected, 10) || 0);
+    var teams = Math.max(1, Math.ceil(pop / 250));
+    var urgency = Math.min(10, Math.max(1, parseInt(urgencyScore, 10) || 5));
+    var priority = urgency >= 8 ? "Immediate response" : urgency >= 5 ? "Urgent response" : "Planned response";
+    if (needType === "Food") return priority + ": ~" + pop + " meal kits, " + teams + " field distribution teams.";
+    if (needType === "Water") return priority + ": ~" + pop + " drinking-water kits/tank refills, " + teams + " water teams.";
+    if (needType === "Medical") return priority + ": ~" + Math.max(1, Math.ceil(pop / 20)) + " med kits, " + teams + " medical teams.";
+    if (needType === "Shelter") return priority + ": ~" + Math.max(1, Math.ceil(pop / 5)) + " shelter kits/tents, " + teams + " shelter teams.";
+    if (needType === "Evacuation") return priority + ": transport for ~" + pop + " people, " + teams + " evacuation teams.";
+    return priority + ": support planning for ~" + pop + " affected people, " + teams + " response teams.";
+  }
+
   function extractReportData(reportText) {
     var apiKey = ENV.GROQ_API_KEY;
     if (!apiKey || apiKey === "REPLACE_ME") {
@@ -68,7 +81,7 @@
     var prompt =
       'You are a humanitarian crisis data extractor. Analyze the following field report and extract structured information.\n\nField Report:\n"' +
       reportText +
-      '"\n\nReturn ONLY a valid JSON object (no markdown, no explanation) with exactly these fields:\n{\n  "location": "<city, region, or place mentioned>",\n  "needType": "<primary need: Food | Water | Medical | Shelter | Evacuation | Other>",\n  "urgencyScore": <integer 1-10, 10 being most critical>,\n  "populationAffected": <estimated number of people affected as integer>\n}\n\nRules:\n- If location is unclear, infer from context or use "Unknown"\n- urgencyScore must be an integer between 1 and 10\n- populationAffected must be an integer (estimate if not explicit)\n- needType must be one of: Food, Water, Medical, Shelter, Evacuation, Other';
+      '"\n\nReturn ONLY a valid JSON object (no markdown, no explanation) with exactly these fields:\n{\n  "location": "<city, region, or place mentioned>",\n  "needType": "<primary need: Food | Water | Medical | Shelter | Evacuation | Other>",\n  "urgencyScore": <integer 1-10, 10 being most critical>,\n  "populationAffected": <estimated number of people affected as integer>,\n  "helpNeeded": "<concise actionable estimate of aid needed: supplies + team suggestion>"\n}\n\nRules:\n- If location is unclear, infer from context or use "Unknown"\n- urgencyScore must be an integer between 1 and 10\n- populationAffected must be an integer (estimate if not explicit)\n- needType must be one of: Food, Water, Medical, Shelter, Evacuation, Other\n- helpNeeded must be one short practical sentence with quantities';
 
     return fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
@@ -102,30 +115,71 @@
         } catch (e) {
           throw new Error("Could not parse Groq response as JSON: " + rawText);
         }
+        var needType = String(parsed.needType || "Other");
+        var urgencyScore = Math.min(10, Math.max(1, parseInt(parsed.urgencyScore) || 5));
+        var populationAffected = Math.max(0, parseInt(parsed.populationAffected) || 0);
         return {
           location: String(parsed.location || "Unknown"),
-          needType: String(parsed.needType || "Other"),
-          urgencyScore: Math.min(10, Math.max(1, parseInt(parsed.urgencyScore) || 5)),
-          populationAffected: Math.max(0, parseInt(parsed.populationAffected) || 0),
+          needType: needType,
+          urgencyScore: urgencyScore,
+          populationAffected: populationAffected,
+          helpNeeded: String(parsed.helpNeeded || "").trim() || deriveHelpEstimate(needType, populationAffected, urgencyScore),
         };
       });
   }
 
+  function extractReportDataFast(reportText, city, state, country) {
+    var text = String(reportText || "");
+    var lower = text.toLowerCase();
+    var needType = "Other";
+    if (/(food|meal|ration|hungry|hunger)/.test(lower)) needType = "Food";
+    else if (/(water|drinking|dehydration|thirst)/.test(lower)) needType = "Water";
+    else if (/(medical|doctor|medicine|injur|hospital|health|ambulance)/.test(lower)) needType = "Medical";
+    else if (/(shelter|tent|home|house|camp|roof)/.test(lower)) needType = "Shelter";
+    else if (/(evacuat|rescue|stranded|trapped|boat)/.test(lower)) needType = "Evacuation";
+
+    var urgencyScore = 5;
+    if (/(critical|urgent|immediate|severe|trapped|dying|death|collapsed)/.test(lower)) urgencyScore = 9;
+    else if (/(blocked|flood|shortage|injured|unsafe|need)/.test(lower)) urgencyScore = 7;
+    else if (/(minor|stable|low)/.test(lower)) urgencyScore = 3;
+
+    var populationAffected = 0;
+    var popMatch = lower.match(/(\d[\d,]*)\s*(people|persons|families|family|children|residents|villagers)?/);
+    if (popMatch) {
+      populationAffected = parseInt(popMatch[1].replace(/,/g, ""), 10) || 0;
+      if (/famil/.test(popMatch[2] || "")) populationAffected *= 5;
+    }
+
+    return Promise.resolve({
+      location: [city, state, country || "India"].filter(Boolean).join(", ") || "India",
+      needType: needType,
+      urgencyScore: urgencyScore,
+      populationAffected: populationAffected,
+      helpNeeded: deriveHelpEstimate(needType, populationAffected, urgencyScore),
+    });
+  }
+
   // ── Geocoding via Nominatim ─────────────────────────────────────────────
   function geocode(locationName) {
-    return fetch("https://nominatim.openstreetmap.org/search?q=" + encodeURIComponent(locationName) + "&format=json&limit=1", {
+    var query = String(locationName || "").trim();
+    if (!query) query = "India";
+    if (query.toLowerCase().indexOf("india") === -1) query += ", India";
+    var url =
+      "https://nominatim.openstreetmap.org/search?q=" +
+      encodeURIComponent(query) +
+      "&format=json&limit=1&countrycodes=in&viewbox=68.1,37.6,97.4,6.5&bounded=1";
+    return fetch(url, {
       headers: { "User-Agent": "CrisisGrid/1.0 (humanitarian-tool)" },
     })
       .then(function (res) { return res.json(); })
       .then(function (data) {
-        if (!data.length) throw new Error("Location '" + locationName + "' not found");
+        if (!data.length) throw new Error("Location '" + query + "' not found in India");
         return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
       });
   }
 
   // ── Firebase init ───────────────────────────────────────────────────────
   var db = null;
-  var storageRoot = null;
   function initFirebase() {
     if (typeof firebase === "undefined") return false;
     var cfg = ENV.FIREBASE_CONFIG;
@@ -133,9 +187,6 @@
     try {
       if (!firebase.apps.length) firebase.initializeApp(cfg);
       db = firebase.firestore();
-      if (firebase.storage) {
-        storageRoot = firebase.storage().ref();
-      }
       return true;
     } catch (e) {
       console.error("Firebase init error:", e);
@@ -170,6 +221,7 @@
   var previewNeed      = document.getElementById("preview-need");
   var previewUrgency   = document.getElementById("preview-urgency");
   var previewPop       = document.getElementById("preview-pop");
+  var previewHelp      = document.getElementById("preview-help");
   var mediaPreviewArea = document.getElementById("media-preview-area");
   var mediaPreviewList = document.getElementById("media-preview-list");
 
@@ -660,52 +712,41 @@
     );
   }
 
-  /** Upload attachments to Firebase Storage and return URL-backed media metadata. */
-  function uploadMediaToStorage(items) {
-    if (!storageRoot) {
-      return Promise.reject(new Error("Firebase Storage is not available."));
-    }
-    var stamp = Date.now();
-    return Promise.all(
-      items.map(function (m, idx) {
-        if (!m || !m.blob) {
-          return Promise.resolve({
-            type: m && m.type ? m.type : "unknown",
-            duration: (m && m.duration) || 0,
-            skipped: true,
-          });
+  function withTimeout(promise, ms, message) {
+    return new Promise(function (resolve, reject) {
+      var done = false;
+      var timer = setTimeout(function () {
+        if (done) return;
+        done = true;
+        reject(new Error(message || "Operation timed out."));
+      }, ms);
+
+      Promise.resolve(promise).then(
+        function (value) {
+          if (done) return;
+          done = true;
+          clearTimeout(timer);
+          resolve(value);
+        },
+        function (err) {
+          if (done) return;
+          done = true;
+          clearTimeout(timer);
+          reject(err);
         }
-        var ext = "bin";
-        var mime = (m.blob.type || "").toLowerCase();
-        if (mime.indexOf("image/") === 0) ext = "jpg";
-        else if (mime.indexOf("video/") === 0) ext = "webm";
-        else if (mime.indexOf("audio/") === 0) ext = "webm";
-        var path =
-          "reports/" +
-          stamp +
-          "/" +
-          (m.type || "file") +
-          "_" +
-          idx +
-          "_" +
-          Math.random().toString(36).slice(2, 8) +
-          "." +
-          ext;
-        var ref = storageRoot.child(path);
-        return ref.put(m.blob).then(function (snap) {
-          return snap.ref.getDownloadURL().then(function (url) {
-            return {
-              type: m.type,
-              url: url,
-              duration: m.duration || 0,
-              mime: (m.blob && m.blob.type) || "",
-              storagePath: path,
-              size: m.blob.size || 0,
-            };
-          });
-        });
-      })
-    );
+      );
+    });
+  }
+
+  function getMediaDataForSave() {
+    if (!mediaAttachments.length) {
+      return Promise.resolve([]);
+    }
+    return buildMediaForFirestore(mediaAttachments);
+  }
+
+  function getSuccessMessage(savedAttachmentCount) {
+    return window.i18n ? window.i18n.t("toast_success") : "Report submitted successfully!";
   }
 
   document.getElementById("report-form").addEventListener("submit", function (e) {
@@ -724,7 +765,10 @@
     var reporterName = document.getElementById("reporter-name") ? document.getElementById("reporter-name").value.trim() : "";
     var city = document.getElementById("reporter-city") ? document.getElementById("reporter-city").value.trim() : "";
     var state = document.getElementById("reporter-state") ? document.getElementById("reporter-state").value.trim() : "";
-    var country = document.getElementById("reporter-country") ? document.getElementById("reporter-country").value.trim() : "";
+    var country = "India";
+    if (document.getElementById("reporter-country")) {
+      document.getElementById("reporter-country").value = "India";
+    }
     
     var locationPrefix = "";
     if (city || state || country) {
@@ -733,17 +777,22 @@
     var fullReportText = locationPrefix ? locationPrefix + "Field Observation: " + reportText : reportText;
 
     var ngoName = ngoNameInput.value.trim() || "Independent Field Worker";
-    setSubmitLoading(true, window.i18n ? window.i18n.t("btn_analyzing") : "Analysing with AI…");
+    setSubmitLoading(true, "Preparing report…");
     hidePreview();
  
-    extractReportData(fullReportText)
+    extractReportDataFast(fullReportText, city, state, country)
       .then(function (extracted) {
         showPreview(extracted);
-        toast(window.i18n ? window.i18n.t("toast_analyzed") : "Report analysed! Saving to database…", "info", 2000);
+        toast("Report prepared. Saving…", "info", 1200);
  
-        return geocode(extracted.location)
+        var geocodeTarget = [city, state, country].filter(Boolean).join(", ") || extracted.location;
+        return withTimeout(geocode(geocodeTarget), 6000, "Location lookup timed out.")
           .then(function (geo) { return { extracted: extracted, lat: geo.lat, lng: geo.lng }; })
-          .catch(function () { return { extracted: extracted, lat: null, lng: null }; });
+          .catch(function () {
+            return withTimeout(geocode(extracted.location), 6000, "Location lookup timed out.")
+              .then(function (geo) { return { extracted: extracted, lat: geo.lat, lng: geo.lng }; })
+              .catch(function () { return { extracted: extracted, lat: null, lng: null }; });
+          });
       })
       .then(function (result) {
         if (!db) {
@@ -752,47 +801,44 @@
           return;
         }
  
-        setSubmitLoading(true, window.i18n ? window.i18n.t("btn_saving") : "Saving to database…");
+        var savedAttachmentCount = mediaAttachments.length;
+        setSubmitLoading(
+          true,
+          savedAttachmentCount ? "Processing attachments…" : (window.i18n ? window.i18n.t("btn_saving") : "Saving report…")
+        );
 
-        setSubmitLoading(true, "Uploading attachments…");
-        return uploadMediaToStorage(mediaAttachments)
-          .catch(function () {
-            // Fallback for projects without Firebase Storage rules/config.
-            return buildMediaForFirestore(mediaAttachments).then(function (fallbackData) {
-              if (fallbackData.some(function (x) { return x.tooLarge; })) {
-                toast(
-                  "Some files were too large for database fallback. Enable Firebase Storage to upload larger videos.",
-                  "warning",
-                  9000
-                );
-              }
-              return fallbackData;
-            });
-          })
+        return getMediaDataForSave()
           .then(function (mediaData) {
-            return db.collection("reports").add({
-            rawText: reportText,
-            reporterName: reporterName,
-            city: city,
-            state: state,
-            country: country,
-            ngoName: ngoName,
-            location: result.extracted.location,
-            needType: result.extracted.needType,
-            urgencyScore: result.extracted.urgencyScore,
-            populationAffected: result.extracted.populationAffected,
-            lat: result.lat,
-            lng: result.lng,
-            mediaCount: mediaAttachments.length,
-            media: mediaData,
-            timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-          });
+            setSubmitLoading(true, window.i18n ? window.i18n.t("btn_saving") : "Saving report…");
+            return withTimeout(
+              db.collection("reports").add({
+                rawText: reportText,
+                reporterName: reporterName,
+                city: city,
+                state: state,
+                country: country,
+                ngoName: ngoName,
+                location: result.extracted.location,
+                needType: result.extracted.needType,
+                urgencyScore: result.extracted.urgencyScore,
+                populationAffected: result.extracted.populationAffected,
+                helpNeeded: result.extracted.helpNeeded || "",
+                lat: result.lat,
+                lng: result.lng,
+                mediaCount: savedAttachmentCount,
+                media: mediaData,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+              }),
+              12000,
+              "Saving report timed out. Check Firebase Firestore rules and network access."
+            );
         }).then(function () {
-          toast((window.i18n ? window.i18n.t("toast_success") : "✅ Report saved with ") + mediaAttachments.length + " attachment(s)!", "success");
+          toast(getSuccessMessage(savedAttachmentCount), "success");
           reportTextarea.value = "";
           document.getElementById("reporter-name") && (document.getElementById("reporter-name").value = "");
           document.getElementById("reporter-city") && (document.getElementById("reporter-city").value = "");
           document.getElementById("reporter-state") && (document.getElementById("reporter-state").value = "");
+          document.getElementById("reporter-country") && (document.getElementById("reporter-country").value = "India");
           ngoNameInput.value = "";
           charCounter.textContent = "0 / 1000";
           mediaAttachments = [];
@@ -823,6 +869,7 @@
     var score = data.urgencyScore;
     previewUrgency.textContent = score + " / 10";
     previewUrgency.style.color = score >= 8 ? "#f87171" : score >= 4 ? "#fb923c" : "#4ade80";
+    if (previewHelp) previewHelp.textContent = data.helpNeeded || "—";
     previewCard.style.display = "block";
     previewCard.classList.add("preview-enter");
   }

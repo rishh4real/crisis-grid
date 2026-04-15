@@ -5,10 +5,16 @@
 (function () {
   "use strict";
 
+  const INDIA_CENTER = [22.5937, 79.9629];
+  const INDIA_BOUNDS = L.latLngBounds([6.5, 68.1], [37.6, 97.4]);
+
   const map = L.map("map", {
-    center: [20.5937, 78.9629],
+    center: INDIA_CENTER,
     zoom: 5,
     zoomControl: false,
+    maxBounds: INDIA_BOUNDS,
+    maxBoundsViscosity: 1,
+    minZoom: 5,
   });
 
   L.control.zoom({ position: "bottomright" }).addTo(map);
@@ -95,6 +101,20 @@
       Evacuation: "\uD83D\uDE81",
     };
     return icons[type] || "\uD83D\uDCCC";
+  }
+
+  function estimateHelpNeeded(report) {
+    var needType = report && report.needType ? String(report.needType) : "Other";
+    var pop = Math.max(0, parseInt(report && report.populationAffected, 10) || 0);
+    var urgency = Math.min(10, Math.max(1, parseInt(report && report.urgencyScore, 10) || 5));
+    var teams = Math.max(1, Math.ceil(pop / 250));
+    var priority = urgency >= 8 ? "Immediate response" : urgency >= 5 ? "Urgent response" : "Planned response";
+    if (needType === "Food") return priority + ": ~" + pop + " meal kits, " + teams + " field distribution teams.";
+    if (needType === "Water") return priority + ": ~" + pop + " water kits/tank refills, " + teams + " water teams.";
+    if (needType === "Medical") return priority + ": ~" + Math.max(1, Math.ceil(pop / 20)) + " med kits, " + teams + " medical teams.";
+    if (needType === "Shelter") return priority + ": ~" + Math.max(1, Math.ceil(pop / 5)) + " shelter kits/tents, " + teams + " shelter teams.";
+    if (needType === "Evacuation") return priority + ": transport for ~" + pop + " people, " + teams + " evacuation teams.";
+    return priority + ": support planning for ~" + pop + " affected people, " + teams + " response teams.";
   }
 
   function esc(str) {
@@ -225,9 +245,10 @@
             const uc = urgencyColor(u);
             const uDisp = Number.isFinite(u) ? u : "\u2014";
             return (
-              `<div class="hotspot-item" data-report-id="${escAttr(r.id)}">` +
+              `<div class="hotspot-item hotspot-priority-card" data-report-id="${escAttr(r.id)}">` +
               '<div class="hotspot-header">' +
               `<span class="hotspot-rank">${medals[i] || "#" + (i + 1)}</span>` +
+              '<span class="hotspot-tag">Priority</span>' +
               `<div class="hotspot-title">${needIcon(r.needType)} ${esc(r.location)}</div>` +
               "</div>" +
               '<div class="hotspot-meta">' +
@@ -261,9 +282,10 @@
             const uc = urgencyColor(u);
             const uDisp = Number.isFinite(u) ? u : "\u2014";
             return (
-              `<div class="hotspot-item" data-report-id="${escAttr(r.id)}">` +
+              `<div class="hotspot-item recent-report-card" data-report-id="${escAttr(r.id)}">` +
               '<div class="hotspot-header">' +
               `<span class="hotspot-rank">\uD83D\uDD50</span>` +
+              '<span class="hotspot-tag">Latest</span>' +
               `<div class="hotspot-title">${needIcon(r.needType)} ${esc(r.location)}</div>` +
               "</div>" +
               '<div class="hotspot-meta">' +
@@ -311,6 +333,17 @@
 
   function upsertMarker(report) {
     if (report.lat == null || report.lng == null) return;
+    if (report.country && String(report.country).toLowerCase() !== "india") {
+      if (markers[report.id]) markers[report.id].remove();
+      delete markers[report.id];
+      return;
+    }
+    const reportPoint = L.latLng(Number(report.lat), Number(report.lng));
+    if (!INDIA_BOUNDS.contains(reportPoint)) {
+      if (markers[report.id]) markers[report.id].remove();
+      delete markers[report.id];
+      return;
+    }
     const u = urgencyNumber(report);
     const colors = urgencyColor(u);
 
@@ -483,6 +516,7 @@
         "m-pop",
         report.populationAffected != null ? Number(report.populationAffected).toLocaleString() : null
       );
+      setText("m-help", report.helpNeeded || estimateHelpNeeded(report));
 
       const tsEl = document.getElementById("m-time");
       if (tsEl) {
@@ -590,7 +624,7 @@
 
   const recenterBtn = document.getElementById("recenter-btn");
   if (recenterBtn) {
-    recenterBtn.addEventListener("click", () => map.flyTo([20.5937, 78.9629], 5));
+    recenterBtn.addEventListener("click", () => map.fitBounds(INDIA_BOUNDS, { padding: [20, 20] }));
   }
 
   function connect() {

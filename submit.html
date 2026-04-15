@@ -5,7 +5,7 @@
   <!-- ENV must load before any module -->
   <script src="env-config.js"></script>
   <script src="theme.js?v=1.2"></script>
-  <script src="i18n.js?v=1.2"></script>
+  <script src="i18n.js?v=1.3"></script>
   <script src="settings.js?v=1.2"></script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
@@ -20,7 +20,7 @@
     rel="stylesheet" />
 
   <!-- Styles -->
-  <link rel="stylesheet" href="style.css?v=1.3" />
+  <link rel="stylesheet" href="style.css?v=1.6" />
 
   <style>
     /* ── Submit page layout ─────────────────────────────────────── */
@@ -703,39 +703,55 @@
           <div class="form-group" style="margin-bottom: 12px;">
             <label class="form-label" for="reporter-city" data-i18n="label_city">City</label>
             <input type="text" id="reporter-city" class="form-control"
-              placeholder="e.g. Kathmandu" maxlength="120"
+              placeholder="e.g. Kolhapur" maxlength="120"
               aria-label="City" required />
           </div>
           <div class="form-group" style="margin-bottom: 12px;">
             <label class="form-label" for="reporter-state" data-i18n="label_state">State</label>
-            <input type="text" id="reporter-state" class="form-control"
-              placeholder="e.g. Maharashtra" maxlength="120"
-              aria-label="State" required />
+            <select id="reporter-state" class="form-control" aria-label="State" required>
+              <option value="" selected disabled data-i18n="select_state">Select a state or union territory</option>
+              <option value="Andaman and Nicobar Islands">Andaman and Nicobar Islands</option>
+              <option value="Andhra Pradesh">Andhra Pradesh</option>
+              <option value="Arunachal Pradesh">Arunachal Pradesh</option>
+              <option value="Assam">Assam</option>
+              <option value="Bihar">Bihar</option>
+              <option value="Chandigarh">Chandigarh</option>
+              <option value="Chhattisgarh">Chhattisgarh</option>
+              <option value="Dadra and Nagar Haveli and Daman and Diu">Dadra and Nagar Haveli and Daman and Diu</option>
+              <option value="Delhi">Delhi</option>
+              <option value="Goa">Goa</option>
+              <option value="Gujarat">Gujarat</option>
+              <option value="Haryana">Haryana</option>
+              <option value="Himachal Pradesh">Himachal Pradesh</option>
+              <option value="Jammu and Kashmir">Jammu and Kashmir</option>
+              <option value="Jharkhand">Jharkhand</option>
+              <option value="Karnataka">Karnataka</option>
+              <option value="Kerala">Kerala</option>
+              <option value="Ladakh">Ladakh</option>
+              <option value="Lakshadweep">Lakshadweep</option>
+              <option value="Madhya Pradesh">Madhya Pradesh</option>
+              <option value="Maharashtra">Maharashtra</option>
+              <option value="Manipur">Manipur</option>
+              <option value="Meghalaya">Meghalaya</option>
+              <option value="Mizoram">Mizoram</option>
+              <option value="Nagaland">Nagaland</option>
+              <option value="Odisha">Odisha</option>
+              <option value="Puducherry">Puducherry</option>
+              <option value="Punjab">Punjab</option>
+              <option value="Rajasthan">Rajasthan</option>
+              <option value="Sikkim">Sikkim</option>
+              <option value="Tamil Nadu">Tamil Nadu</option>
+              <option value="Telangana">Telangana</option>
+              <option value="Tripura">Tripura</option>
+              <option value="Uttar Pradesh">Uttar Pradesh</option>
+              <option value="Uttarakhand">Uttarakhand</option>
+              <option value="West Bengal">West Bengal</option>
+            </select>
           </div>
           <div class="form-group" style="margin-bottom: 12px;">
             <label class="form-label" for="reporter-country" data-i18n="label_country">Country</label>
-            <select id="reporter-country" class="form-control" aria-label="Country" required>
-              <option value="" disabled data-i18n="select_country">Select a country</option>
-              <option value="Afghanistan">Afghanistan</option>
-              <option value="Bangladesh">Bangladesh</option>
-              <option value="Haiti">Haiti</option>
-              <option value="India" selected>India</option>
-              <option value="Indonesia">Indonesia</option>
-              <option value="Libya">Libya</option>
-              <option value="Morocco">Morocco</option>
-              <option value="Nepal">Nepal</option>
-              <option value="Pakistan">Pakistan</option>
-              <option value="Philippines">Philippines</option>
-              <option value="Somalia">Somalia</option>
-              <option value="Sri Lanka">Sri Lanka</option>
-              <option value="Sudan">Sudan</option>
-              <option value="Syria">Syria</option>
-              <option value="Turkey">Turkey</option>
-              <option value="Ukraine">Ukraine</option>
-              <option value="United States">United States</option>
-              <option value="Yemen">Yemen</option>
-              <option value="Other">Other</option>
-            </select>
+            <input type="text" id="reporter-country" class="form-control" value="India"
+              aria-label="Country" readonly required />
           </div>
           <div class="form-group">
             <label class="form-label" for="ngo-name" data-i18n="label_ngo">Organisation / NGO Name (optional)</label>
@@ -764,6 +780,10 @@
             <div class="preview-field">
               <span class="key" data-i18n="key_pop">Population Affected</span>
               <span class="val" id="preview-pop">—</span>
+            </div>
+            <div class="preview-field" style="grid-column: 1 / -1;">
+              <span class="key" data-i18n="key_help_needed">Estimated Help Needed</span>
+              <span class="val" id="preview-help">—</span>
             </div>
           </div>
         </div>
@@ -811,10 +831,8 @@
   <!-- Firebase SDK (compat mode — works without build step) -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
-
   <!-- App logic -->
-  <script src="submit.js?v=1.1"></script>
+  <script src="submit.js?v=1.7"></script>
 </body>
 
 </html>
