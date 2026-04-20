@@ -810,25 +810,63 @@
         return getMediaDataForSave()
           .then(function (mediaData) {
             setSubmitLoading(true, window.i18n ? window.i18n.t("btn_saving") : "Saving report…");
+            
+            var twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+            
+            var deduplicatePromise = db.collection("reports")
+              .where("location", "==", result.extracted.location)
+              .where("state", "==", state)
+              .get()
+              .then(function(snapshot) {
+                var existingDoc = null;
+                snapshot.forEach(function(doc) {
+                  var data = doc.data();
+                  var docTime = data.timestamp && data.timestamp.toDate ? data.timestamp.toDate() : new Date();
+                  if (docTime > twentyFourHoursAgo) {
+                    if (!existingDoc) {
+                      existingDoc = doc;
+                    } else {
+                      var existingTime = existingDoc.data().timestamp && existingDoc.data().timestamp.toDate ? existingDoc.data().timestamp.toDate() : new Date(0);
+                      if (docTime > existingTime) {
+                        existingDoc = doc;
+                      }
+                    }
+                  }
+                });
+
+                if (existingDoc) {
+                  var d = existingDoc.data();
+                  var newPop = (d.populationAffected || 0) + result.extracted.populationAffected;
+                  var newUrgency = Math.max(d.urgencyScore || 0, result.extracted.urgencyScore);
+                  return existingDoc.ref.update({
+                    populationAffected: newPop,
+                    urgencyScore: newUrgency,
+                    updates: firebase.firestore.FieldValue.arrayUnion(reportText)
+                  });
+                } else {
+                  return db.collection("reports").add({
+                    rawText: reportText,
+                    reporterName: reporterName,
+                    city: city,
+                    state: state,
+                    country: country,
+                    ngoName: ngoName,
+                    location: result.extracted.location,
+                    needType: result.extracted.needType,
+                    urgencyScore: result.extracted.urgencyScore,
+                    populationAffected: result.extracted.populationAffected,
+                    helpNeeded: result.extracted.helpNeeded || "",
+                    lat: result.lat,
+                    lng: result.lng,
+                    mediaCount: savedAttachmentCount,
+                    media: mediaData,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                  });
+                }
+              });
+
             return withTimeout(
-              db.collection("reports").add({
-                rawText: reportText,
-                reporterName: reporterName,
-                city: city,
-                state: state,
-                country: country,
-                ngoName: ngoName,
-                location: result.extracted.location,
-                needType: result.extracted.needType,
-                urgencyScore: result.extracted.urgencyScore,
-                populationAffected: result.extracted.populationAffected,
-                helpNeeded: result.extracted.helpNeeded || "",
-                lat: result.lat,
-                lng: result.lng,
-                mediaCount: savedAttachmentCount,
-                media: mediaData,
-                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-              }),
+              deduplicatePromise,
               12000,
               "Saving report timed out. Check Firebase Firestore rules and network access."
             );

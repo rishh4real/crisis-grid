@@ -5,16 +5,15 @@
 (function () {
   "use strict";
 
-  const INDIA_CENTER = [22.5937, 79.9629];
+  const INDIA_CENTER = [22.8, 82.5];
   const INDIA_BOUNDS = L.latLngBounds([6.5, 68.1], [37.6, 97.4]);
 
   const map = L.map("map", {
     center: INDIA_CENTER,
     zoom: 5,
+    zoomSnap: 0.25,
     zoomControl: false,
-    maxBounds: INDIA_BOUNDS,
-    maxBoundsViscosity: 1,
-    minZoom: 5,
+    minZoom: 4,
   });
 
   L.control.zoom({ position: "bottomright" }).addTo(map);
@@ -624,7 +623,7 @@
 
   const recenterBtn = document.getElementById("recenter-btn");
   if (recenterBtn) {
-    recenterBtn.addEventListener("click", () => map.fitBounds(INDIA_BOUNDS, { padding: [20, 20] }));
+    recenterBtn.addEventListener("click", () => map.flyTo(INDIA_CENTER, 5));
   }
 
   function connect() {

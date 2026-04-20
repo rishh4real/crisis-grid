@@ -38,11 +38,62 @@ import { getFirestore,
          onSnapshot,
          query,
          orderBy,
-         serverTimestamp }     from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+         serverTimestamp,
+         where,
+         updateDoc,
+         doc,
+         arrayUnion }     from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const firebaseConfig = getFirebaseConfig();
 const app  = initializeApp(firebaseConfig);
 const db   = getFirestore(app);
 
+// ── Deduplication Utility ──────────────────────────────────────────────────
+async function saveReportWithDeduplication(reportData) {
+  const reportsRef = collection(db, "reports");
+  const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+  const q = query(
+    reportsRef,
+    where("location", "==", reportData.location),
+    where("state", "==", reportData.state)
+  );
+
+  const snapshot = await getDocs(q);
+  let existingDoc = null;
+
+  snapshot.forEach((d) => {
+    const data = d.data();
+    const docTime = data.timestamp && data.timestamp.toDate ? data.timestamp.toDate() : new Date();
+    if (docTime > twentyFourHoursAgo) {
+      if (!existingDoc) {
+        existingDoc = d;
+      } else {
+        const existingTime = existingDoc.data().timestamp && existingDoc.data().timestamp.toDate ? existingDoc.data().timestamp.toDate() : new Date(0);
+        if (docTime > existingTime) {
+          existingDoc = d;
+        }
+      }
+    }
+  });
+
+  if (existingDoc) {
+    const existingData = existingDoc.data();
+    const docRef = doc(db, "reports", existingDoc.id);
+    await updateDoc(docRef, {
+      populationAffected: (existingData.populationAffected || 0) + (reportData.populationAffected || 0),
+      urgencyScore: Math.max(existingData.urgencyScore || 0, reportData.urgencyScore || 0),
+      updates: arrayUnion(reportData.rawText || "")
+    });
+    return existingDoc.id;
+  } else {
+    const docRef = await addDoc(reportsRef, {
+      ...reportData,
+      timestamp: serverTimestamp()
+    });
+    return docRef.id;
+  }
+}
+
 // ── Exports ───────────────────────────────────────────────────────────────
-export { db, collection, addDoc, getDocs, onSnapshot, query, orderBy, serverTimestamp };
+export { db, collection, addDoc, getDocs, onSnapshot, query, orderBy, serverTimestamp, where, updateDoc, doc, arrayUnion, saveReportWithDeduplication };

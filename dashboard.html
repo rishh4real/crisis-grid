@@ -21,7 +21,7 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <!-- Styles -->
-  <link rel="stylesheet" href="style.css?v=1.6" />
+  <link rel="stylesheet" href="style.css?v=1.7" />
 
   <style>
     /* ── Dashboard layout ─────────────────────────────────────────── */
@@ -384,7 +384,7 @@
     /* Hotspot list */
     .sidebar-section-title {
       display: flex; align-items: center; gap: 8px;
-      font-size: 11px; font-weight: 700;
+      font-size: 13px; font-weight: 800;
       text-transform: uppercase; letter-spacing: 0.8px;
       color: var(--text-label); padding: 16px 20px 8px;
       flex-shrink: 0;
@@ -434,6 +434,31 @@
       border-left: 4px solid var(--accent);
       background: #f8faf9;
       opacity: 0.92;
+    }
+
+    [data-theme="dark"] .hotspot-priority-card {
+      background: rgba(239, 68, 68, 0.12);
+      border-color: rgba(239, 68, 68, 0.35);
+      border-left-color: var(--red);
+      box-shadow: none;
+    }
+
+    [data-theme="dark"] .recent-report-card {
+      background: rgba(124, 179, 159, 0.12);
+      border-color: rgba(124, 179, 159, 0.32);
+      border-left-color: var(--accent);
+      opacity: 1;
+    }
+
+    [data-theme="dark"] .hotspot-item:hover {
+      background: var(--bg-card);
+      border-color: var(--accent);
+    }
+
+    [data-theme="dark"] .hotspot-title,
+    [data-theme="dark"] .hotspot-stat,
+    [data-theme="dark"] .hotspot-stat-value {
+      color: var(--text-primary);
     }
 
     .hotspot-item:hover {
@@ -843,6 +868,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 
   <!-- App logic -->
-  <script src="app.js?v=2.0"></script>
+  <script src="chat-helper.js?v=1.0"></script>
+  <script src="app.js?v=2.7"></script>
 </body>
 </html>
