@@ -1,5 +1,6 @@
 # Local secrets — never commit real keys
 env-config.js
+!public/env-config.js
 .env
 .env.*
 !.env.example

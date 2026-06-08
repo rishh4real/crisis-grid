@@ -315,6 +315,22 @@
     }
   }
 
+  function showFeedState(message) {
+    allReports = [];
+    Object.keys(markers).forEach((id) => {
+      markers[id].remove();
+      delete markers[id];
+    });
+    if (statsHigh) statsHigh.textContent = "0";
+    if (statsMed) statsMed.textContent = "0";
+    if (statsLow) statsLow.textContent = "0";
+    if (reportListCount) reportListCount.textContent = "0";
+    if (lastUpdatedEl) lastUpdatedEl.textContent = "\u2014";
+    if (hotspotList) hotspotList.innerHTML = '<div class="hotspot-empty">' + esc(message) + "</div>";
+    if (recentReportList) recentReportList.innerHTML = '<div class="hotspot-empty">' + esc(message) + "</div>";
+    renderReportsDrawerList();
+  }
+
   function applyFiltersAndList() {
     const filtered = allReports.filter((r) => reportMatchesMapFilter(r));
 
@@ -627,20 +643,37 @@
   }
 
   function connect() {
-    if (typeof firebase === "undefined") return;
+    if (typeof firebase === "undefined") {
+      showFeedState("Firebase SDK did not load. Check network access and script blockers.");
+      return;
+    }
     const cfg = window.__ENV && window.__ENV.FIREBASE_CONFIG;
-    if (!cfg || cfg.apiKey === "REPLACE_ME") return;
+    if (!cfg || !cfg.apiKey || cfg.apiKey === "REPLACE_ME") {
+      showFeedState("Live feed is not configured. Deploy public/env-config.js with Firebase settings.");
+      return;
+    }
 
-    if (!firebase.apps.length) firebase.initializeApp(cfg);
-    const db = firebase.firestore();
+    try {
+      if (!firebase.apps.length) firebase.initializeApp(cfg);
+      const db = firebase.firestore();
 
-    db.collection("reports")
-      .orderBy("timestamp", "desc")
-      .onSnapshot((snap) => {
-        allReports = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-        allReports.forEach(upsertMarker);
-        updateUI();
-      });
+      db.collection("reports")
+        .orderBy("timestamp", "desc")
+        .onSnapshot(
+          (snap) => {
+            allReports = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+            allReports.forEach(upsertMarker);
+            updateUI();
+          },
+          (err) => {
+            console.error("[CrisisGrid] Firestore live feed error:", err);
+            showFeedState("Live feed error. Check Firestore rules and deployed Firebase config.");
+          }
+        );
+    } catch (err) {
+      console.error("[CrisisGrid] Firebase init error:", err);
+      showFeedState("Live feed could not start. Check the deployed Firebase config.");
+    }
   }
 
   connect();
